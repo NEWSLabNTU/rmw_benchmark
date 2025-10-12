@@ -5,19 +5,10 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # gscam_stress root is parent directory
 GSCAM_STRESS_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
-# Workspace is three levels up (gscam_stress -> autoware-rmw-zenoh-benchmark -> 2025.02-ws)
-WORKSPACE_DIR="$( cd "$SCRIPT_DIR/../../.." && pwd )"
 
 export ROS_DOMAIN_ID=188
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI="file://$GSCAM_STRESS_DIR/src/stress_test/config/cyclonedds_shm.xml"
-
-# Source Autoware workspace setup
-if [ -f "$WORKSPACE_DIR/install/setup.bash" ]; then
-    . "$WORKSPACE_DIR/install/setup.bash"
-else
-    echo "WARNING: Autoware workspace setup not found at $WORKSPACE_DIR/install/setup.bash"
-fi
 
 # Source gscam_stress workspace setup if it exists
 if [ -f "$GSCAM_STRESS_DIR/install/setup.bash" ]; then

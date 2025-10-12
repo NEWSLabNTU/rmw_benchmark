@@ -5,7 +5,9 @@ SHELL := /bin/bash
 
 # Get directories
 GSCAM_STRESS_DIR := $(shell pwd)
-WORKSPACE_DIR := $(shell cd "$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))/../.." && pwd)
+MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+BENCHMARK_ROOT := $(shell cd "$(MAKEFILE_DIR)/.." && pwd)
+RMW_ZENOH_INSTALL := $(BENCHMARK_ROOT)/common/rmw_zenoh/install
 
 # Service names
 SERVICE_CYCLONEDDS := stress-test-cyclonedds
@@ -64,14 +66,12 @@ clean:
 start-cyclonedds: build
 	@echo "Starting stress test with CycloneDDS"
 	@echo "Resolution: $(STRESS_WIDTH)x$(STRESS_HEIGHT) @ $(STRESS_FPS) FPS"
-	@. $(WORKSPACE_DIR)/install/setup.bash && \
-	. $(GSCAM_STRESS_DIR)/install/setup.bash && \
+	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
 	ros2 systemd launch \
 		--name $(SERVICE_CYCLONEDDS) \
 		--replace \
 		--domain-id $(DOMAIN_ID_CYCLONEDDS) \
 		--rmw rmw_cyclonedds_cpp \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
 		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
 		--env CYCLONEDDS_URI=file://$(STRESS_TEST_DIR)/config/cyclonedds_shm.xml \
 		--description "RMW Stress Test with CycloneDDS" \
@@ -95,15 +95,13 @@ logs-cyclonedds:
 .PHONY: start-router
 start-router:
 	@echo "Starting Zenoh router for stress test with shared memory..."
-	@. $(WORKSPACE_DIR)/install/setup.bash && \
-	. $(GSCAM_STRESS_DIR)/install/setup.bash && \
-	. $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash && \
+	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
+	. $(RMW_ZENOH_INSTALL)/setup.bash && \
 	ros2 systemd run \
 		--name $(SERVICE_ROUTER) \
 		--replace \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
 		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
-		--source $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash \
+		--source $(RMW_ZENOH_INSTALL)/setup.bash \
 		--env ZENOH_CONFIG=file://$(STRESS_TEST_DIR)/config/zenoh_shm.json5 \
 		--env RUST_LOG=zenoh=info \
 		--env RMW_IMPLEMENTATION=rmw_zenoh_cpp \
@@ -130,17 +128,15 @@ start-zenoh: build
 	fi
 	@echo "Starting stress test with Zenoh + Shared Memory"
 	@echo "Resolution: $(STRESS_WIDTH)x$(STRESS_HEIGHT) @ $(STRESS_FPS) FPS"
-	@. $(WORKSPACE_DIR)/install/setup.bash && \
-	. $(GSCAM_STRESS_DIR)/install/setup.bash && \
-	. $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash && \
+	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
+	. $(RMW_ZENOH_INSTALL)/setup.bash && \
 	ros2 systemd launch \
 		--name $(SERVICE_ZENOH) \
 		--replace \
 		--domain-id $(DOMAIN_ID_ZENOH) \
 		--rmw rmw_zenoh_cpp \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
 		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
-		--source $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash \
+		--source $(RMW_ZENOH_INSTALL)/setup.bash \
 		--env ZENOH_CONFIG=file://$(STRESS_TEST_DIR)/config/zenoh_shm.json5 \
 		--description "RMW Stress Test with Zenoh (Shared Memory)" \
 		rmw_stress_test stress_test.launch.py \

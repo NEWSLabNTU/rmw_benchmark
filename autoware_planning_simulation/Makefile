@@ -3,8 +3,11 @@
 
 SHELL := /bin/bash
 
-# Get workspace directory (two levels up from this Makefile)
-WORKSPACE_DIR := $(shell cd "$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))/../.." && pwd)
+# Get directories
+MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+BENCHMARK_ROOT := $(shell cd "$(MAKEFILE_DIR)/.." && pwd)
+AUTOWARE_DIR := $(MAKEFILE_DIR)/autoware
+RMW_ZENOH_INSTALL := $(BENCHMARK_ROOT)/common/rmw_zenoh/install
 
 # Service names
 SERVICE_CYCLONEDDS := autoware-planning-cyclonedds
@@ -50,7 +53,7 @@ start-cyclonedds:
 		--replace \
 		--domain-id $(DOMAIN_ID_CYCLONEDDS) \
 		--rmw rmw_cyclonedds_cpp \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
+		--source $(AUTOWARE_DIR)/install/setup.bash \
 		--env DISPLAY=$(DISPLAY) \
 		--description "Autoware Planning Simulator with CycloneDDS" \
 		autoware_launch planning_simulator.launch.xml \
@@ -75,8 +78,8 @@ start-router:
 	ros2 systemd run \
 		--name $(SERVICE_ROUTER) \
 		--replace \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
-		--source $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash \
+		--source $(AUTOWARE_DIR)/install/setup.bash \
+		--source $(RMW_ZENOH_INSTALL)/setup.bash \
 		--env RUST_LOG=zenoh=info \
 		--env RMW_IMPLEMENTATION=rmw_zenoh_cpp \
 		--description "Zenoh Router Daemon for RMW Zenoh" \
@@ -105,8 +108,8 @@ start-zenoh:
 		--replace \
 		--domain-id $(DOMAIN_ID_ZENOH) \
 		--rmw rmw_zenoh_cpp \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
-		--source $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash \
+		--source $(AUTOWARE_DIR)/install/setup.bash \
+		--source $(RMW_ZENOH_INSTALL)/setup.bash \
 		--env DISPLAY=$(DISPLAY) \
 		--description "Autoware Planning Simulator with Zenoh" \
 		autoware_launch planning_simulator.launch.xml \

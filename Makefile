@@ -6,8 +6,16 @@ help:
 	@echo "Autoware RMW Zenoh Benchmark - Top-level Makefile"
 	@echo ""
 	@echo "This Makefile delegates to subdirectories:"
+	@echo "  - common/rmw_zenoh/"
 	@echo "  - autoware_planning_simulation/"
 	@echo "  - gscam_stress/"
+	@echo ""
+	@echo "====================================================================="
+	@echo "Common Dependencies (common/)"
+	@echo "====================================================================="
+	@echo "  build-rmw-zenoh           Build rmw_zenoh from submodule"
+	@echo "  clean-rmw-zenoh           Clean rmw_zenoh build artifacts"
+	@echo "  rebuild-rmw-zenoh         Rebuild rmw_zenoh"
 	@echo ""
 	@echo "====================================================================="
 	@echo "Autoware Planning Simulation (autoware_planning_simulation/)"
@@ -64,6 +72,20 @@ help:
 	@echo "====================================================================="
 	@echo "  stop-all                  Stop ALL services (sim + stress)"
 	@echo "  status-all                Show ALL service statuses"
+
+# =============================================================================
+# Common Dependencies targets
+# =============================================================================
+
+.PHONY: build-rmw-zenoh clean-rmw-zenoh rebuild-rmw-zenoh
+build-rmw-zenoh:
+	$(MAKE) -C common/rmw_zenoh build
+
+clean-rmw-zenoh:
+	$(MAKE) -C common/rmw_zenoh clean
+
+rebuild-rmw-zenoh:
+	$(MAKE) -C common/rmw_zenoh rebuild
 
 # =============================================================================
 # Autoware Planning Simulation targets
