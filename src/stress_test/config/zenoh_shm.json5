@@ -1,0 +1,43 @@
+// Zenoh configuration with Shared Memory support
+//
+// This configuration enables:
+// - Shared memory transport for high-throughput communication
+// - Optimized for large message transfer (images)
+// - Suitable for intra-host communication
+
+{
+  mode: "peer",
+
+  // Shared Memory configuration
+  transport: {
+    shared_memory: {
+      enabled: true,
+    },
+    unicast: {
+      lowlatency: true,
+    },
+  },
+
+  // SHM (Shared Memory) configuration
+  scouting: {
+    multicast: {
+      enabled: false,
+    },
+  },
+
+  timestamping: {
+    enabled: true,
+  },
+
+  plugins: {
+    // Storage plugin for shared memory
+    storage_manager: {
+      storages: {},
+    },
+
+    // REST plugin (optional, for monitoring)
+    rest: {
+      http_port: 8000,
+    },
+  },
+}
