@@ -125,6 +125,11 @@ help:
 	@echo "Management targets:"
 	@echo "  stop-all             Stop all stress test services"
 	@echo "  status-all           Show all service statuses"
+	@echo ""
+	@echo "Benchmark targets:"
+	@echo "  benchmark            Run complete benchmark suite (14 configs, ~35 min)"
+	@echo "  benchmark-quick      Run quick benchmark (6 configs, ~8 min)"
+	@echo "  benchmark-analyze    Analyze latest benchmark results"
 
 .PHONY: show-config
 show-config:
@@ -354,3 +359,42 @@ status-all:
 			echo "  $$service: INACTIVE"; \
 		fi; \
 	done
+
+# Benchmark automation targets
+.PHONY: benchmark
+benchmark: build
+	@echo "======================================================================"
+	@echo "Running Complete Benchmark Suite"
+	@echo "======================================================================"
+	@echo "This will test 14 configurations with both CycloneDDS and Zenoh"
+	@echo "Estimated duration: ~35 minutes"
+	@echo ""
+	@$(GSCAM_STRESS_DIR)/scripts/run_boundary_test.sh 60
+
+.PHONY: benchmark-quick
+benchmark-quick: build
+	@echo "======================================================================"
+	@echo "Running Quick Benchmark"
+	@echo "======================================================================"
+	@echo "This will test 6 key configurations with both RMW implementations"
+	@echo "Estimated duration: ~8 minutes"
+	@echo ""
+	@$(GSCAM_STRESS_DIR)/scripts/quick_boundary_test.sh
+
+.PHONY: benchmark-analyze
+benchmark-analyze:
+	@echo "======================================================================"
+	@echo "Analyzing Benchmark Results"
+	@echo "======================================================================"
+	@$(eval LATEST_RUN := $(shell ls -td $(GSCAM_STRESS_DIR)/results/run_* 2>/dev/null | head -1))
+	@$(eval LATEST_QUICK := $(shell ls -td $(GSCAM_STRESS_DIR)/results/quick_run_* 2>/dev/null | head -1))
+	@if [ -n "$(LATEST_RUN)" ]; then \
+		echo "Analyzing full benchmark: $(LATEST_RUN)"; \
+		$(GSCAM_STRESS_DIR)/scripts/analyze_results.py $(LATEST_RUN)/summary.csv --report $(LATEST_RUN)/findings.txt; \
+	elif [ -n "$(LATEST_QUICK)" ]; then \
+		echo "Analyzing quick benchmark: $(LATEST_QUICK)"; \
+		$(GSCAM_STRESS_DIR)/scripts/analyze_results.py $(LATEST_QUICK)/summary.csv --report $(LATEST_QUICK)/findings.txt; \
+	else \
+		echo "No benchmark results found. Run 'make benchmark' or 'make benchmark-quick' first."; \
+		exit 1; \
+	fi
