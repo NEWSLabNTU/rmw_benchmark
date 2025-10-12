@@ -214,6 +214,10 @@ start-cyclonedds: build
 	@echo "Estimated data rate: ~$(DATA_RATE_MB) MB/s (uncompressed)"
 	@echo "QoS: $(QOS_RELIABILITY)/$(QOS_DURABILITY)"
 	@echo "======================================================================"
+	@mkdir -p $(GSCAM_STRESS_DIR)/cyclonedds
+	@$(eval CSV_DATETIME := $(shell date +%Y-%m-%d_%H-%M-%S))
+	@$(eval CSV_PATH := $(GSCAM_STRESS_DIR)/cyclonedds/$(CSV_DATETIME).csv)
+	@echo "CSV output: $(CSV_PATH)"
 	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
 	ros2 systemd launch \
 		--name $(SERVICE_CYCLONEDDS) \
@@ -227,6 +231,7 @@ start-cyclonedds: build
 		width:=$(WIDTH) \
 		height:=$(HEIGHT) \
 		fps:=$(FPS) \
+		csv_output_path:=$(CSV_PATH) \
 		qos_reliability:=$(QOS_RELIABILITY) \
 		qos_durability:=$(QOS_DURABILITY) \
 		qos_history:=$(QOS_HISTORY) \
@@ -290,6 +295,10 @@ start-zenoh: build
 	@echo "Estimated data rate: ~$(DATA_RATE_MB) MB/s (uncompressed)"
 	@echo "QoS: $(QOS_RELIABILITY)/$(QOS_DURABILITY)"
 	@echo "======================================================================"
+	@mkdir -p $(GSCAM_STRESS_DIR)/zenoh
+	@$(eval CSV_DATETIME := $(shell date +%Y-%m-%d_%H-%M-%S))
+	@$(eval CSV_PATH := $(GSCAM_STRESS_DIR)/zenoh/$(CSV_DATETIME).csv)
+	@echo "CSV output: $(CSV_PATH)"
 	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
 	. $(RMW_ZENOH_INSTALL)/setup.bash && \
 	ros2 systemd launch \
@@ -305,6 +314,7 @@ start-zenoh: build
 		width:=$(WIDTH) \
 		height:=$(HEIGHT) \
 		fps:=$(FPS) \
+		csv_output_path:=$(CSV_PATH) \
 		qos_reliability:=$(QOS_RELIABILITY) \
 		qos_durability:=$(QOS_DURABILITY) \
 		qos_history:=$(QOS_HISTORY) \

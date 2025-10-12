@@ -100,6 +100,13 @@ def generate_launch_description():
         description='QoS Liveliness Lease Duration in milliseconds (0 = infinite)'
     )
 
+    # CSV output parameters
+    declare_csv_output_path = DeclareLaunchArgument(
+        'csv_output_path',
+        default_value='',
+        description='Path to CSV file for statistics output (empty = no CSV output)'
+    )
+
     # Component container
     container = ComposableNodeContainer(
         name='stress_test_container',
@@ -114,7 +121,11 @@ def generate_launch_description():
                 name='image_subscriber',
                 parameters=[{
                     'topic_name': '/camera/image_raw',
-                    'show_stats_interval': 2.0,
+                    'show_stats_interval': 1.0,
+                    'csv_output_path': LaunchConfiguration('csv_output_path'),
+                    'video_width': LaunchConfiguration('width'),
+                    'video_height': LaunchConfiguration('height'),
+                    'video_fps': LaunchConfiguration('fps'),
                     'qos_reliability': LaunchConfiguration('qos_reliability'),
                     'qos_durability': LaunchConfiguration('qos_durability'),
                     'qos_history': LaunchConfiguration('qos_history'),
@@ -198,6 +209,8 @@ def generate_launch_description():
         declare_qos_deadline_ms,
         declare_qos_liveliness,
         declare_qos_liveliness_lease_ms,
+        # CSV output
+        declare_csv_output_path,
         # Container and nodes
         container,
         OpaqueFunction(function=launch_setup),
