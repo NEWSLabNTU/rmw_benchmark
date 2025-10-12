@@ -20,15 +20,70 @@ public:
     this->declare_parameter("topic_name", "/camera/image_raw");
     this->declare_parameter("show_stats_interval", 1.0);
 
+    // QoS parameters
+    this->declare_parameter("qos_reliability", "RELIABLE");
+    this->declare_parameter("qos_durability", "VOLATILE");
+    this->declare_parameter("qos_history", "KEEP_LAST");
+    this->declare_parameter("qos_history_depth", 10);
+    this->declare_parameter("qos_deadline_ms", 0);
+    this->declare_parameter("qos_liveliness", "AUTOMATIC");
+    this->declare_parameter("qos_liveliness_lease_ms", 0);
+
     std::string topic_name = this->get_parameter("topic_name").as_string();
     double stats_interval = this->get_parameter("show_stats_interval").as_double();
 
-    RCLCPP_INFO(this->get_logger(), "Subscribing to topic: %s", topic_name.c_str());
+    // Read QoS parameters
+    std::string qos_reliability = this->get_parameter("qos_reliability").as_string();
+    std::string qos_durability = this->get_parameter("qos_durability").as_string();
+    std::string qos_history = this->get_parameter("qos_history").as_string();
+    int qos_history_depth = this->get_parameter("qos_history_depth").as_int();
+    int qos_deadline_ms = this->get_parameter("qos_deadline_ms").as_int();
+    std::string qos_liveliness = this->get_parameter("qos_liveliness").as_string();
+    int qos_liveliness_lease_ms = this->get_parameter("qos_liveliness_lease_ms").as_int();
 
-    // Create subscription with QoS for large messages
-    auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
-    qos.reliable();
-    qos.durability_volatile();
+    RCLCPP_INFO(this->get_logger(), "Subscribing to topic: %s", topic_name.c_str());
+    RCLCPP_INFO(this->get_logger(), "QoS: %s/%s, History: %s(%d)",
+                qos_reliability.c_str(), qos_durability.c_str(),
+                qos_history.c_str(), qos_history_depth);
+
+    // Create subscription with configured QoS
+    auto qos = (qos_history == "KEEP_ALL") ?
+               rclcpp::QoS(rclcpp::KeepAll()) :
+               rclcpp::QoS(rclcpp::KeepLast(qos_history_depth));
+
+    // Set reliability
+    if (qos_reliability == "BEST_EFFORT") {
+      qos.best_effort();
+    } else {
+      qos.reliable();
+    }
+
+    // Set durability
+    if (qos_durability == "TRANSIENT_LOCAL") {
+      qos.transient_local();
+    } else {
+      qos.durability_volatile();
+    }
+
+    // Set deadline if specified
+    if (qos_deadline_ms > 0) {
+      qos.deadline(std::chrono::milliseconds(qos_deadline_ms));
+    }
+
+    // Set liveliness
+    if (qos_liveliness == "MANUAL_BY_TOPIC") {
+      qos.liveliness(rclcpp::LivelinessPolicy::ManualByTopic);
+    } else if (qos_liveliness == "SYSTEM_DEFAULT") {
+      qos.liveliness(rclcpp::LivelinessPolicy::SystemDefault);
+    } else {
+      // Default to AUTOMATIC
+      qos.liveliness(rclcpp::LivelinessPolicy::Automatic);
+    }
+
+    // Set liveliness lease duration if specified
+    if (qos_liveliness_lease_ms > 0) {
+      qos.liveliness_lease_duration(std::chrono::milliseconds(qos_liveliness_lease_ms));
+    }
 
     subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
       topic_name,

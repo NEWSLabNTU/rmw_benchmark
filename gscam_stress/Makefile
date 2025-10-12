@@ -20,17 +20,91 @@ DOMAIN_ID_ZENOH := 189
 
 # Stress test configuration
 STRESS_TEST_DIR := $(GSCAM_STRESS_DIR)/src/stress_test
-STRESS_WIDTH := 1920
-STRESS_HEIGHT := 1080
-STRESS_FPS := 30
+CONFIG_DIR := $(STRESS_TEST_DIR)/config
+RMW_CONFIG_DIR := $(STRESS_TEST_DIR)/rmw_config
+
+# Select config file (can be overridden: make STRESS_CONFIG=high.conf start-cyclonedds)
+STRESS_CONFIG ?= medium.conf
+STRESS_CONFIG_PATH := $(CONFIG_DIR)/$(STRESS_CONFIG)
+
+# Helper function to read config value
+define read_config
+$(shell grep -E "^$(1)=" $(STRESS_CONFIG_PATH) 2>/dev/null | cut -d'=' -f2- | sed 's/^"\(.*\)"$$/\1/' | sed "s/^'\(.*\)'$$/\1/")
+endef
+
+# Load configuration from config file
+ifneq (,$(wildcard $(STRESS_CONFIG_PATH)))
+    # Video parameters
+    WIDTH := $(call read_config,WIDTH)
+    HEIGHT := $(call read_config,HEIGHT)
+    FPS := $(call read_config,FPS)
+
+    # GStreamer pipeline with variable substitution
+    GSTREAMER_PIPELINE_RAW := $(call read_config,GSTREAMER_PIPELINE)
+    GSTREAMER_PIPELINE := $(subst {WIDTH},$(WIDTH),$(subst {HEIGHT},$(HEIGHT),$(subst {FPS},$(FPS),$(GSTREAMER_PIPELINE_RAW))))
+
+    # QoS parameters
+    QOS_RELIABILITY := $(call read_config,QOS_RELIABILITY)
+    QOS_DURABILITY := $(call read_config,QOS_DURABILITY)
+    QOS_HISTORY := $(call read_config,QOS_HISTORY)
+    QOS_HISTORY_DEPTH := $(call read_config,QOS_HISTORY_DEPTH)
+    QOS_DEADLINE_MS := $(call read_config,QOS_DEADLINE_MS)
+    QOS_LIVELINESS := $(call read_config,QOS_LIVELINESS)
+    QOS_LIVELINESS_LEASE_MS := $(call read_config,QOS_LIVELINESS_LEASE_MS)
+
+    # Fallback to defaults if values are missing
+    WIDTH ?= 1280
+    HEIGHT ?= 720
+    FPS ?= 30
+    GSTREAMER_PIPELINE ?= videotestsrc pattern=smpte ! video/x-raw,width=$(WIDTH),height=$(HEIGHT),framerate=$(FPS)/1 ! videoconvert
+    QOS_RELIABILITY ?= RELIABLE
+    QOS_DURABILITY ?= VOLATILE
+    QOS_HISTORY ?= KEEP_LAST
+    QOS_HISTORY_DEPTH ?= 10
+    QOS_DEADLINE_MS ?= 0
+    QOS_LIVELINESS ?= AUTOMATIC
+    QOS_LIVELINESS_LEASE_MS ?= 0
+else
+    # Default values if config file doesn't exist
+    $(warning Config file not found: $(STRESS_CONFIG_PATH))
+    $(warning Using default medium configuration)
+    WIDTH := 1280
+    HEIGHT := 720
+    FPS := 30
+    GSTREAMER_PIPELINE := videotestsrc pattern=smpte ! video/x-raw,width=$(WIDTH),height=$(HEIGHT),framerate=$(FPS)/1 ! videoconvert
+    QOS_RELIABILITY := RELIABLE
+    QOS_DURABILITY := VOLATILE
+    QOS_HISTORY := KEEP_LAST
+    QOS_HISTORY_DEPTH := 10
+    QOS_DEADLINE_MS := 0
+    QOS_LIVELINESS := AUTOMATIC
+    QOS_LIVELINESS_LEASE_MS := 0
+endif
+
+# Extract profile name from config filename (e.g., medium.conf -> medium)
+PROFILE_NAME := $(basename $(STRESS_CONFIG))
 
 .PHONY: help
 help:
 	@echo "gscam Stress Test Makefile"
 	@echo ""
+	@echo "Current Configuration:"
+	@echo "  Config: $(STRESS_CONFIG) ($(PROFILE_NAME))"
+	@echo "  Resolution: $(WIDTH)x$(HEIGHT) @ $(FPS) FPS"
+	@$(eval DATA_RATE_MB := $(shell echo "scale=1; $(WIDTH) * $(HEIGHT) * 3 * $(FPS) / 1048576" | bc 2>/dev/null || echo "N/A"))
+	@echo "  Data rate: ~$(DATA_RATE_MB) MB/s"
+	@echo ""
 	@echo "Build targets:"
 	@echo "  build                Build stress test package"
 	@echo "  clean                Clean build artifacts"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  show-config          Show detailed configuration"
+	@echo "  edit-config          Edit current configuration file"
+	@echo "  list-configs         List available configuration files"
+	@echo ""
+	@echo "To use a different config:"
+	@echo "  make STRESS_CONFIG=high.conf start-cyclonedds"
 	@echo ""
 	@echo "CycloneDDS Stress Test:"
 	@echo "  start-cyclonedds     Start stress test with CycloneDDS"
@@ -52,6 +126,73 @@ help:
 	@echo "  stop-all             Stop all stress test services"
 	@echo "  status-all           Show all service statuses"
 
+.PHONY: show-config
+show-config:
+	@echo "======================================================================"
+	@echo "Stress Test Configuration"
+	@echo "======================================================================"
+	@echo "Configuration File: $(STRESS_CONFIG)"
+	@echo "Profile Name: $(PROFILE_NAME)"
+	@echo "Full Path: $(STRESS_CONFIG_PATH)"
+	@echo ""
+	@echo "Video Parameters:"
+	@echo "  Width:  $(WIDTH) pixels"
+	@echo "  Height: $(HEIGHT) pixels"
+	@echo "  FPS:    $(FPS) frames/sec"
+	@echo ""
+	@echo "Estimated Data Rate (uncompressed RGB):"
+	@$(eval DATA_RATE_MB := $(shell echo "scale=1; $(WIDTH) * $(HEIGHT) * 3 * $(FPS) / 1048576" | bc 2>/dev/null || echo "N/A"))
+	@echo "  ~$(DATA_RATE_MB) MB/s"
+	@echo ""
+	@echo "GStreamer Pipeline:"
+	@echo "  $(GSTREAMER_PIPELINE)"
+	@echo ""
+	@echo "QoS (Quality of Service) Settings:"
+	@echo "  Reliability:       $(QOS_RELIABILITY)"
+	@echo "  Durability:        $(QOS_DURABILITY)"
+	@echo "  History:           $(QOS_HISTORY)"
+	@echo "  History Depth:     $(QOS_HISTORY_DEPTH)"
+	@echo "  Deadline:          $(QOS_DEADLINE_MS) ms"
+	@echo "  Liveliness:        $(QOS_LIVELINESS)"
+	@echo "  Liveliness Lease:  $(QOS_LIVELINESS_LEASE_MS) ms"
+	@echo ""
+	@echo "RMW Configuration Files:"
+	@echo "  CycloneDDS: $(RMW_CONFIG_DIR)/cyclonedds_shm.xml"
+	@echo "  Zenoh:      $(RMW_CONFIG_DIR)/zenoh_shm.json5"
+	@echo ""
+	@echo "To change configuration:"
+	@echo "  1. Edit: make edit-config"
+	@echo "  2. Or use different config: make STRESS_CONFIG=high.conf start-cyclonedds"
+	@echo "  3. List available: make list-configs"
+
+.PHONY: edit-config
+edit-config:
+	@$${EDITOR:-nano} $(STRESS_CONFIG_PATH)
+
+.PHONY: list-configs
+list-configs:
+	@echo "Available configuration files in $(CONFIG_DIR):"
+	@echo ""
+	@for conf in $(CONFIG_DIR)/*.conf; do \
+		if [ -f "$$conf" ]; then \
+			filename=$$(basename $$conf); \
+			if [ "$$filename" = "$(STRESS_CONFIG)" ]; then \
+				echo "  * $$filename (current)"; \
+			else \
+				echo "    $$filename"; \
+			fi; \
+		fi; \
+	done
+	@echo ""
+	@echo "Example templates (copy and modify):"
+	@for example in $(CONFIG_DIR)/*.example; do \
+		if [ -f "$$example" ]; then \
+			echo "    $$(basename $$example)"; \
+		fi; \
+	done
+	@echo ""
+	@echo "To use a config: make STRESS_CONFIG=filename start-cyclonedds"
+
 .PHONY: build
 build:
 	@echo "Building stress test package..."
@@ -64,8 +205,15 @@ clean:
 
 .PHONY: start-cyclonedds
 start-cyclonedds: build
+	@echo "======================================================================"
 	@echo "Starting stress test with CycloneDDS"
-	@echo "Resolution: $(STRESS_WIDTH)x$(STRESS_HEIGHT) @ $(STRESS_FPS) FPS"
+	@echo "======================================================================"
+	@echo "Config: $(STRESS_CONFIG) ($(PROFILE_NAME))"
+	@echo "Resolution: $(WIDTH)x$(HEIGHT) @ $(FPS) FPS"
+	@$(eval DATA_RATE_MB := $(shell echo "scale=1; $(WIDTH) * $(HEIGHT) * 3 * $(FPS) / 1048576" | bc 2>/dev/null || echo "N/A"))
+	@echo "Estimated data rate: ~$(DATA_RATE_MB) MB/s (uncompressed)"
+	@echo "QoS: $(QOS_RELIABILITY)/$(QOS_DURABILITY)"
+	@echo "======================================================================"
 	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
 	ros2 systemd launch \
 		--name $(SERVICE_CYCLONEDDS) \
@@ -73,12 +221,19 @@ start-cyclonedds: build
 		--domain-id $(DOMAIN_ID_CYCLONEDDS) \
 		--rmw rmw_cyclonedds_cpp \
 		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
-		--env CYCLONEDDS_URI=file://$(STRESS_TEST_DIR)/config/cyclonedds_shm.xml \
-		--description "RMW Stress Test with CycloneDDS" \
+		--env CYCLONEDDS_URI=file://$(RMW_CONFIG_DIR)/cyclonedds_shm.xml \
+		--description "RMW Stress Test with CycloneDDS ($(PROFILE_NAME))" \
 		rmw_stress_test stress_test.launch.py \
-		width:=$(STRESS_WIDTH) \
-		height:=$(STRESS_HEIGHT) \
-		fps:=$(STRESS_FPS)
+		width:=$(WIDTH) \
+		height:=$(HEIGHT) \
+		fps:=$(FPS) \
+		qos_reliability:=$(QOS_RELIABILITY) \
+		qos_durability:=$(QOS_DURABILITY) \
+		qos_history:=$(QOS_HISTORY) \
+		qos_history_depth:=$(QOS_HISTORY_DEPTH) \
+		qos_deadline_ms:=$(QOS_DEADLINE_MS) \
+		qos_liveliness:=$(QOS_LIVELINESS) \
+		qos_liveliness_lease_ms:=$(QOS_LIVELINESS_LEASE_MS)
 
 .PHONY: stop-cyclonedds
 stop-cyclonedds:
@@ -102,7 +257,7 @@ start-router:
 		--replace \
 		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
 		--source $(RMW_ZENOH_INSTALL)/setup.bash \
-		--env ZENOH_CONFIG=file://$(STRESS_TEST_DIR)/config/zenoh_shm.json5 \
+		--env ZENOH_CONFIG=file://$(RMW_CONFIG_DIR)/zenoh_shm.json5 \
 		--env RUST_LOG=zenoh=info \
 		--env RMW_IMPLEMENTATION=rmw_zenoh_cpp \
 		--description "Zenoh Router for Stress Test (Shared Memory)" \
@@ -126,8 +281,15 @@ start-zenoh: build
 		echo "ERROR: Zenoh router is not running. Start it first with: make start-router"; \
 		exit 1; \
 	fi
+	@echo "======================================================================"
 	@echo "Starting stress test with Zenoh + Shared Memory"
-	@echo "Resolution: $(STRESS_WIDTH)x$(STRESS_HEIGHT) @ $(STRESS_FPS) FPS"
+	@echo "======================================================================"
+	@echo "Config: $(STRESS_CONFIG) ($(PROFILE_NAME))"
+	@echo "Resolution: $(WIDTH)x$(HEIGHT) @ $(FPS) FPS"
+	@$(eval DATA_RATE_MB := $(shell echo "scale=1; $(WIDTH) * $(HEIGHT) * 3 * $(FPS) / 1048576" | bc 2>/dev/null || echo "N/A"))
+	@echo "Estimated data rate: ~$(DATA_RATE_MB) MB/s (uncompressed)"
+	@echo "QoS: $(QOS_RELIABILITY)/$(QOS_DURABILITY)"
+	@echo "======================================================================"
 	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
 	. $(RMW_ZENOH_INSTALL)/setup.bash && \
 	ros2 systemd launch \
@@ -137,12 +299,19 @@ start-zenoh: build
 		--rmw rmw_zenoh_cpp \
 		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
 		--source $(RMW_ZENOH_INSTALL)/setup.bash \
-		--env ZENOH_CONFIG=file://$(STRESS_TEST_DIR)/config/zenoh_shm.json5 \
-		--description "RMW Stress Test with Zenoh (Shared Memory)" \
+		--env ZENOH_CONFIG=file://$(RMW_CONFIG_DIR)/zenoh_shm.json5 \
+		--description "RMW Stress Test with Zenoh ($(PROFILE_NAME))" \
 		rmw_stress_test stress_test.launch.py \
-		width:=$(STRESS_WIDTH) \
-		height:=$(STRESS_HEIGHT) \
-		fps:=$(STRESS_FPS)
+		width:=$(WIDTH) \
+		height:=$(HEIGHT) \
+		fps:=$(FPS) \
+		qos_reliability:=$(QOS_RELIABILITY) \
+		qos_durability:=$(QOS_DURABILITY) \
+		qos_history:=$(QOS_HISTORY) \
+		qos_history_depth:=$(QOS_HISTORY_DEPTH) \
+		qos_deadline_ms:=$(QOS_DEADLINE_MS) \
+		qos_liveliness:=$(QOS_LIVELINESS) \
+		qos_liveliness_lease_ms:=$(QOS_LIVELINESS_LEASE_MS)
 
 .PHONY: stop-zenoh
 stop-zenoh:

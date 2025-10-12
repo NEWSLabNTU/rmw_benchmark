@@ -67,6 +67,10 @@ help:
 	@echo "  stress-stop-all           Stop all stress test services"
 	@echo "  stress-status-all         Show all stress test service statuses"
 	@echo ""
+	@echo "Configuration:"
+	@echo "  stress-show-config        Show stress test configuration"
+	@echo "  stress-edit-config        Edit stress test configuration"
+	@echo ""
 	@echo "====================================================================="
 	@echo "Global Management"
 	@echo "====================================================================="
@@ -193,6 +197,13 @@ stress-stop-all:
 
 stress-status-all:
 	$(MAKE) -C gscam_stress status-all
+
+.PHONY: stress-show-config stress-edit-config
+stress-show-config:
+	$(MAKE) -C gscam_stress show-config
+
+stress-edit-config:
+	$(MAKE) -C gscam_stress edit-config
 
 # =============================================================================
 # Global Management

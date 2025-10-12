@@ -10,7 +10,7 @@ BENCHMARK_ROOT="$( cd "$GSCAM_STRESS_DIR/.." && pwd )"
 
 export ROS_DOMAIN_ID=189
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
-export ZENOH_CONFIG="file://$GSCAM_STRESS_DIR/src/stress_test/config/zenoh_shm.json5"
+export ZENOH_CONFIG="file://$GSCAM_STRESS_DIR/src/stress_test/rmw_config/zenoh_shm.json5"
 export RUST_LOG=zenoh=info
 
 # Source gscam_stress workspace setup if it exists

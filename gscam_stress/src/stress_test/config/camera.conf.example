@@ -1,0 +1,94 @@
+# Real Camera Configuration Template
+# For use with actual hardware cameras instead of test patterns
+# Copy this file to camera.conf and modify for your camera
+# Use: cp camera.conf.example camera.conf
+#      Edit camera.conf with your camera parameters
+#      Set STRESS_CONFIG=camera.conf in Makefile
+
+# =============================================================================
+# Video Parameters
+# =============================================================================
+# Should match your camera's capabilities
+WIDTH=1920
+HEIGHT=1080
+FPS=30
+
+# =============================================================================
+# GStreamer Pipeline
+# =============================================================================
+# Examples for different camera types:
+#
+# V4L2 USB Camera (most common):
+# GSTREAMER_PIPELINE="v4l2src device=/dev/video0 ! video/x-raw,width={WIDTH},height={HEIGHT},framerate={FPS}/1 ! videoconvert"
+#
+# Raspberry Pi Camera:
+# GSTREAMER_PIPELINE="rpicamsrc ! video/x-raw,width={WIDTH},height={HEIGHT},framerate={FPS}/1 ! videoconvert"
+#
+# Intel RealSense (color stream):
+# GSTREAMER_PIPELINE="realsensesrc ! video/x-raw,width={WIDTH},height={HEIGHT},framerate={FPS}/1 ! videoconvert"
+#
+# Network camera (RTSP):
+# GSTREAMER_PIPELINE="rtspsrc location=rtsp://192.168.1.100:8554/stream ! decodebin ! videoscale ! video/x-raw,width={WIDTH},height={HEIGHT} ! videoconvert"
+#
+# Default: V4L2 camera on /dev/video0
+GSTREAMER_PIPELINE="v4l2src device=/dev/video0 ! video/x-raw,width={WIDTH},height={HEIGHT},framerate={FPS}/1 ! videoconvert"
+
+# =============================================================================
+# QoS (Quality of Service) Settings
+# =============================================================================
+
+# Reliability
+# - RELIABLE: Guarantees delivery, retransmits lost messages
+# - BEST_EFFORT: Best-effort delivery, may drop messages (common for real-time video)
+# Note: For real-time video streaming, BEST_EFFORT is often preferred
+QOS_RELIABILITY=BEST_EFFORT
+
+# Durability
+# - VOLATILE: Data not stored, only for active subscribers (typical for video)
+# - TRANSIENT_LOCAL: Late-joining subscribers get recent historical data
+QOS_DURABILITY=VOLATILE
+
+# History
+# - KEEP_LAST: Keep only the last N messages (specified by depth)
+# - KEEP_ALL: Keep all messages (subject to resource limits)
+QOS_HISTORY=KEEP_LAST
+
+# History Depth (for KEEP_LAST)
+# For real-time video, smaller values reduce latency
+QOS_HISTORY_DEPTH=5
+
+# Deadline (milliseconds)
+# Maximum time between published messages
+# For 30 FPS, frames should arrive every ~33ms
+# Setting deadline to 50ms allows some jitter
+QOS_DEADLINE_MS=50
+
+# Liveliness
+# - AUTOMATIC: System automatically maintains liveliness (recommended)
+# - MANUAL_BY_TOPIC: Application must assert liveliness per topic
+# - SYSTEM_DEFAULT: Application must assert liveliness per node
+QOS_LIVELINESS=AUTOMATIC
+
+# Liveliness Lease Duration (milliseconds)
+# For video streaming, detect dead camera within 1 second
+QOS_LIVELINESS_LEASE_MS=1000
+
+# =============================================================================
+# Camera Setup Notes
+# =============================================================================
+#
+# 1. List available cameras:
+#    v4l2-ctl --list-devices
+#
+# 2. Check supported formats:
+#    v4l2-ctl --device=/dev/video0 --list-formats-ext
+#
+# 3. Test GStreamer pipeline:
+#    gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=1920,height=1080,framerate=30/1 ! videoconvert ! autovideosink
+#
+# 4. Camera permissions:
+#    sudo usermod -a -G video $USER
+#    (logout and login for changes to take effect)
+#
+# 5. For network cameras, ensure RTSP URL is accessible:
+#    ffplay rtsp://192.168.1.100:8554/stream
