@@ -1,0 +1,16 @@
+[2m2025-10-09T18:25:20.140899Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime[0m[2m:[0m Using ZID: c31bd7496217eb05249a6b75515ad9c6
+[2m2025-10-09T18:25:20.141459Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/140.112.175.26:7447
+[2m2025-10-09T18:25:20.141470Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::1f8:aa0c:b3c:c66b]:7447
+[2m2025-10-09T18:25:20.141472Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::df01:921f:e03d:7a7a]:7447
+[2m2025-10-09T18:25:20.141474Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::330c:27a4:1ded:f39b]:7447
+[2m2025-10-09T18:25:20.141475Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::6c0d:94ff:fead:9a10]:7447
+[2m2025-10-09T18:25:20.141477Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::f0ca:abff:fe20:6191]:7447
+[2m2025-10-09T18:25:20.141478Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::143d:65ff:fe36:1ca3]:7447
+[2m2025-10-09T18:25:20.141480Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::d895:20ff:fe7a:4f83]:7447
+[2m2025-10-09T18:25:20.141481Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::38bf:75ff:fe98:7a7]:7447
+[2m2025-10-09T18:25:20.141482Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/[fe80::c46:2ff:fe27:bfdb]:7447
+[2m2025-10-09T18:25:20.141484Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/192.168.10.77:7447
+[2m2025-10-09T18:25:20.141485Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/172.18.0.1:7447
+[2m2025-10-09T18:25:20.141487Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/172.19.0.1:7447
+[2m2025-10-09T18:25:20.141488Z[0m [32m INFO[0m ThreadId(02) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/172.21.0.1:7447
+Started Zenoh router with id c31bd7496217eb05249a6b75515ad9c6
