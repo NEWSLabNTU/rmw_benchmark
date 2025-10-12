@@ -2,6 +2,35 @@
 
 A configurable stress test for comparing ROS 2 RMW implementations (CycloneDDS vs Zenoh) using high-resolution video streaming.
 
+## Benchmark Results Summary
+
+**Latest benchmark run**: `results/run_2025-10-13_01-02-46/`
+
+Based on comprehensive testing across 14 configurations (13 MB/s to 1424 MB/s):
+
+- **CycloneDDS**: Consistent 0.00-0.97% frame loss across all data rates
+- **Zenoh**: 0.00% frame loss up to 178 MB/s (Full HD@30fps)
+- **Performance boundary**: Testing shows different characteristics at extreme loads (>1 GB/s)
+
+See `results/run_2025-10-13_01-02-46/summary.csv` for detailed metrics.
+
+## Automated Benchmark Suite
+
+Run comprehensive automated tests to compare RMW implementations:
+
+```bash
+# Quick test: 6 key configs, ~8 minutes
+make benchmark-quick
+
+# Full suite: 14 configs, ~35 minutes
+make benchmark
+
+# Analyze latest results
+make benchmark-analyze
+```
+
+All benchmark scripts are in `scripts/` directory. See [scripts/README.md](scripts/README.md) for details.
+
 ## Quick Start
 
 ```bash
@@ -42,18 +71,39 @@ Each stress test configuration is stored in a separate file in `src/stress_test/
 
 ### Available Configurations
 
-| Config File | Resolution | FPS | Data Rate | QoS | Use Case |
-|------------|-----------|-----|-----------|-----|----------|
-| **low.conf** | 640x480 | 15 | ~14 MB/s | Reliable/Volatile | Initial testing, debugging |
-| **medium.conf** | 1280x720 | 30 | ~80 MB/s | Reliable/Volatile | Standard HD (default) |
-| **high.conf** | 1920x1080 | 30 | ~180 MB/s | Reliable/Volatile | Full HD stress test |
-| **extreme.conf** | 3840x2160 | 30 | ~720 MB/s | Reliable/Volatile | 4K maximum stress |
-| **high_besteffort.conf** | 1920x1080 | 30 | ~180 MB/s | BestEffort/Volatile | Test lossy behavior |
-| **extreme_besteffort.conf** | 3840x2160 | 30 | ~720 MB/s | BestEffort/Volatile | 4K with frame drops |
-| **high_transient.conf** | 1920x1080 | 30 | ~180 MB/s | Reliable/Transient | Test durability |
-| **1080p60.conf** | 1920x1080 | 60 | ~360 MB/s | Reliable/Volatile | High FPS variant |
+#### Standard Configurations (for benchmarking)
 
-**Note**: Data rates are for uncompressed RGB video.
+| Config File              | Resolution | FPS | Data Rate  | QoS               | Use Case                      |
+|--------------------------|------------|-----|------------|-------------------|-------------------------------|
+| **low.conf**             | 640x480    | 15  | ~13 MB/s   | Reliable/Volatile | Initial testing, debugging    |
+| **640x480_30fps.conf**   | 640x480    | 30  | ~26 MB/s   | Reliable/Volatile | Low load baseline             |
+| **medium.conf**          | 1280x720   | 30  | ~79 MB/s   | Reliable/Volatile | Standard HD (default)         |
+| **1280x720_45fps.conf**  | 1280x720   | 45  | ~119 MB/s  | Reliable/Volatile | HD intermediate               |
+| **1280x720_60fps.conf**  | 1280x720   | 60  | ~158 MB/s  | Reliable/Volatile | HD high framerate             |
+| **high.conf**            | 1920x1080  | 30  | ~178 MB/s  | Reliable/Volatile | Full HD standard              |
+| **1920x1080_45fps.conf** | 1920x1080  | 45  | ~267 MB/s  | Reliable/Volatile | Full HD intermediate          |
+| **1080p60.conf**         | 1920x1080  | 60  | ~356 MB/s  | Reliable/Volatile | Full HD high framerate        |
+| **2560x1440_30fps.conf** | 2560x1440  | 30  | ~316 MB/s  | Reliable/Volatile | 2K standard                   |
+| **2560x1440_45fps.conf** | 2560x1440  | 45  | ~475 MB/s  | Reliable/Volatile | 2K intermediate               |
+| **2560x1440_60fps.conf** | 2560x1440  | 60  | ~633 MB/s  | Reliable/Volatile | 2K high framerate             |
+| **extreme.conf**         | 3840x2160  | 30  | ~712 MB/s  | Reliable/Volatile | 4K standard                   |
+| **3840x2160_45fps.conf** | 3840x2160  | 45  | ~1068 MB/s | Reliable/Volatile | 4K intermediate ⚠️ Zenoh limit |
+| **3840x2160_60fps.conf** | 3840x2160  | 60  | ~1424 MB/s | Reliable/Volatile | 4K maximum ⚠️ Use CycloneDDS   |
+
+#### Alternative QoS Configurations
+
+| Config File                 | Resolution | FPS | Data Rate | QoS                 | Use Case            |
+|-----------------------------|------------|-----|-----------|---------------------|---------------------|
+| **high_besteffort.conf**    | 1920x1080  | 30  | ~180 MB/s | BestEffort/Volatile | Test lossy behavior |
+| **extreme_besteffort.conf** | 3840x2160  | 30  | ~720 MB/s | BestEffort/Volatile | 4K with frame drops |
+| **high_transient.conf**     | 1920x1080  | 30  | ~180 MB/s | Reliable/Transient  | Test durability     |
+
+**Note**: Data rates are for uncompressed RGB video (3 bytes per pixel).
+
+⚠️ **Performance Notes** (from `results/run_2025-10-13_01-02-46/`):
+- **CycloneDDS**: Consistent 0.00-0.97% frame loss across all loads tested
+- **Zenoh**: Excellent performance in tested range (0.00% loss up to 178 MB/s)
+- Test both RMW implementations for your specific use case at extreme loads (>1 GB/s)
 
 ### Using Different Configurations
 
@@ -82,10 +132,18 @@ make build              # Build stress test package
 make clean              # Clean build artifacts
 ```
 
+### Benchmark Automation
+```bash
+make benchmark          # Run complete benchmark suite (14 configs, ~35 min)
+make benchmark-quick    # Run quick benchmark (6 configs, ~8 min)
+make benchmark-analyze  # Analyze latest benchmark results
+```
+
 ### Configuration
 ```bash
 make show-config        # Display current configuration
 make edit-config        # Edit configuration file
+make list-configs       # List all available configurations
 ```
 
 ### CycloneDDS Tests
@@ -157,55 +215,7 @@ ros2 topic bw /camera/image_raw
 ros2 topic info /camera/image_raw -v
 ```
 
-## System Requirements
-
-### Minimum (low profile)
-- CPU: 2 cores
-- RAM: 2 GB
-- Bandwidth: 15 MB/s
-
-### Recommended (medium/high profile)
-- CPU: 4 cores
-- RAM: 4 GB
-- Bandwidth: 200 MB/s
-
-### High Performance (extreme profile)
-- CPU: 8+ cores
-- RAM: 8 GB
-- Bandwidth: 1 GB/s
-- Note: 4K @ 30fps may exceed 1 Gbps Ethernet without shared memory
-
 ## Stress Testing Strategies
-
-### Progressive Load Testing
-
-Start with low stress and gradually increase:
-
-```bash
-# 1. Verify setup with LOW
-sed -i 's/PROFILE=.*/PROFILE=low/' src/stress_test/config/stress_test.conf
-make start-cyclonedds
-# Verify no errors, good baseline
-make stop-cyclonedds
-
-# 2. Standard load with MEDIUM
-sed -i 's/PROFILE=.*/PROFILE=medium/' src/stress_test/config/stress_test.conf
-make start-cyclonedds
-# Monitor CPU, memory, latency
-make stop-cyclonedds
-
-# 3. High stress with HIGH
-sed -i 's/PROFILE=.*/PROFILE=high/' src/stress_test/config/stress_test.conf
-make start-cyclonedds
-# Look for dropped frames, increased latency
-make stop-cyclonedds
-
-# 4. Maximum stress with EXTREME
-sed -i 's/PROFILE=.*/PROFILE=extreme/' src/stress_test/config/stress_test.conf
-make start-cyclonedds
-# Expect high resource usage, find limits
-make stop-cyclonedds
-```
 
 ### Comparing RMW Implementations
 
@@ -322,17 +332,40 @@ No Autoware dependency! This test is standalone.
 gscam_stress/
 ├── Makefile                          # Build and run targets
 ├── README.md                         # This file
+├── BENCHMARK_FINDINGS.md             # Comprehensive benchmark analysis
 ├── STRESS_TEST_CONFIG.md             # Detailed configuration guide
+├── scripts/                          # Benchmark automation scripts
+│   ├── README.md                     # Scripts documentation
+│   ├── benchmark_rmw.sh              # Single test runner
+│   ├── run_boundary_test.sh          # Full benchmark suite (14 configs)
+│   ├── quick_boundary_test.sh        # Quick test (6 configs)
+│   └── analyze_results.py            # Results analysis tool
+├── results/                          # Benchmark results (generated)
+│   ├── run_TIMESTAMP/                # Full benchmark run
+│   │   ├── summary.csv               # Aggregate results
+│   │   ├── findings.txt              # Analysis report
+│   │   ├── cyclonedds/               # CycloneDDS CSV files
+│   │   └── zenoh/                    # Zenoh CSV files
+│   └── quick_run_TIMESTAMP/          # Quick benchmark run
 ├── src/stress_test/
 │   ├── config/                       # Stress test configurations
 │   │   ├── low.conf                  # 640x480 @ 15 FPS
+│   │   ├── 640x480_30fps.conf        # 640x480 @ 30 FPS
 │   │   ├── medium.conf               # 1280x720 @ 30 FPS (default)
+│   │   ├── 1280x720_45fps.conf       # 1280x720 @ 45 FPS
+│   │   ├── 1280x720_60fps.conf       # 1280x720 @ 60 FPS
 │   │   ├── high.conf                 # 1920x1080 @ 30 FPS
+│   │   ├── 1920x1080_45fps.conf      # 1920x1080 @ 45 FPS
+│   │   ├── 1080p60.conf              # 1920x1080 @ 60 FPS
+│   │   ├── 2560x1440_30fps.conf      # 2560x1440 @ 30 FPS
+│   │   ├── 2560x1440_45fps.conf      # 2560x1440 @ 45 FPS
+│   │   ├── 2560x1440_60fps.conf      # 2560x1440 @ 60 FPS
 │   │   ├── extreme.conf              # 3840x2160 @ 30 FPS
+│   │   ├── 3840x2160_45fps.conf      # 3840x2160 @ 45 FPS
+│   │   ├── 3840x2160_60fps.conf      # 3840x2160 @ 60 FPS
 │   │   ├── high_besteffort.conf      # Full HD with BEST_EFFORT QoS
 │   │   ├── extreme_besteffort.conf   # 4K with BEST_EFFORT QoS
 │   │   ├── high_transient.conf       # Full HD with TRANSIENT_LOCAL
-│   │   ├── 1080p60.conf              # 1920x1080 @ 60 FPS
 │   │   ├── custom.conf.example       # Template for custom configs
 │   │   └── camera.conf.example       # Template for real cameras
 │   ├── rmw_config/                   # RMW implementation configs
@@ -343,9 +376,11 @@ gscam_stress/
 │   └── src/
 │       └── image_subscriber_node.cpp # Subscriber with metrics
 ├── cyclonedds/
-│   └── cyclonedds_env.sh            # CycloneDDS environment
+│   ├── cyclonedds_env.sh             # CycloneDDS environment
+│   └── *.csv                         # CycloneDDS test results (generated)
 └── zenoh/
-    └── zenoh_env.sh                 # Zenoh environment
+    ├── zenoh_env.sh                  # Zenoh environment
+    └── *.csv                         # Zenoh test results (generated)
 ```
 
 ## License
@@ -362,7 +397,7 @@ To add new features:
 
 ## See Also
 
+- [results/run_2025-10-13_01-02-46/summary.csv](results/run_2025-10-13_01-02-46/summary.csv) - Benchmark results
+- [scripts/README.md](scripts/README.md) - Benchmark automation documentation
 - [Parent README](../README.md)
 - [Stress Test Configuration Guide](STRESS_TEST_CONFIG.md)
-- [Dependencies Overview](../DEPENDENCIES.md)
-- [Setup Guide](../SETUP.md)
