@@ -1,9 +1,10 @@
-// Zenoh configuration with Shared Memory support
+// Zenoh configuration with Shared Memory support for Stress Test
 //
 // This configuration enables:
 // - Shared memory transport for high-throughput communication
 // - Optimized for large message transfer (images)
 // - Suitable for intra-host communication
+// - Uses non-default ports to avoid conflicts with planning simulation router
 
 {
   mode: "peer",
@@ -16,6 +17,16 @@
     unicast: {
       lowlatency: true,
     },
+  },
+
+  // Listen on specific port to avoid conflicts
+  listen: {
+    endpoints: ["tcp/0.0.0.0:7448"],
+  },
+
+  // Connect configuration
+  connect: {
+    endpoints: [],
   },
 
   // SHM (Shared Memory) configuration
@@ -37,7 +48,7 @@
 
     // REST plugin (optional, for monitoring)
     rest: {
-      http_port: 8000,
+      http_port: 8001,
     },
   },
 }

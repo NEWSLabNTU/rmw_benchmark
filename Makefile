@@ -1,297 +1,195 @@
-# Makefile for Autoware RMW Zenoh Benchmark
-# Manages systemd services for Autoware planning simulator with different RMW implementations
-
-# Get workspace directory (parent of this Makefile's directory)
-WORKSPACE_DIR := $(shell cd "$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))/.." && pwd)
-
-# Local benchmark workspace directory
-BENCHMARK_DIR := $(shell pwd)
-
-# Service names
-SERVICE_CYCLONEDDS := autoware-planning-cyclonedds
-SERVICE_ZENOH := autoware-planning-zenoh
-SERVICE_ROUTER := zenoh-router
-SERVICE_STRESS_CYCLONEDDS := stress-test-cyclonedds
-SERVICE_STRESS_ZENOH := stress-test-zenoh
-SERVICE_STRESS_ROUTER := stress-test-zenoh-router
-
-# Common parameters
-DOMAIN_ID_CYCLONEDDS := 188
-DOMAIN_ID_ZENOH := 189
-DISPLAY := :1
-MAP_PATH := $(HOME)/autoware_map/sample-map-planning
-VEHICLE_MODEL := sample_vehicle
-SENSOR_MODEL := sample_sensor_kit
+# Top-level Makefile for Autoware RMW Zenoh Benchmark
+# Delegates to subdirectory Makefiles
 
 .PHONY: help
 help:
-	@echo "Autoware RMW Zenoh Benchmark Makefile"
+	@echo "Autoware RMW Zenoh Benchmark - Top-level Makefile"
 	@echo ""
+	@echo "This Makefile delegates to subdirectories:"
+	@echo "  - autoware_planning_simulation/"
+	@echo "  - gscam_stress/"
+	@echo ""
+	@echo "====================================================================="
+	@echo "Autoware Planning Simulation (autoware_planning_simulation/)"
+	@echo "====================================================================="
 	@echo "CycloneDDS targets:"
-	@echo "  start-sim-cyclonedds     Start Autoware with CycloneDDS"
-	@echo "  stop-sim-cyclonedds      Stop CycloneDDS simulation"
-	@echo "  status-sim-cyclonedds    Show CycloneDDS service status"
-	@echo "  logs-sim-cyclonedds      View CycloneDDS logs"
+	@echo "  sim-start-cyclonedds      Start Autoware with CycloneDDS"
+	@echo "  sim-stop-cyclonedds       Stop CycloneDDS simulation"
+	@echo "  sim-status-cyclonedds     Show CycloneDDS service status"
+	@echo "  sim-logs-cyclonedds       View CycloneDDS logs"
 	@echo ""
 	@echo "Zenoh targets:"
-	@echo "  start-zenoh-router       Start Zenoh router daemon (required first)"
-	@echo "  stop-zenoh-router        Stop Zenoh router"
-	@echo "  status-zenoh-router      Show router status"
-	@echo "  logs-zenoh-router        View router logs"
-	@echo "  start-sim-zenoh          Start Autoware with Zenoh"
-	@echo "  stop-sim-zenoh           Stop Zenoh simulation"
-	@echo "  status-sim-zenoh         Show Zenoh service status"
-	@echo "  logs-sim-zenoh           View Zenoh logs"
+	@echo "  sim-start-router          Start Zenoh router daemon"
+	@echo "  sim-stop-router           Stop Zenoh router"
+	@echo "  sim-status-router         Show router status"
+	@echo "  sim-logs-router           View router logs"
+	@echo "  sim-start-zenoh           Start Autoware with Zenoh"
+	@echo "  sim-stop-zenoh            Stop Zenoh simulation"
+	@echo "  sim-status-zenoh          Show Zenoh service status"
+	@echo "  sim-logs-zenoh            View Zenoh logs"
 	@echo ""
-	@echo "Build targets:"
-	@echo "  build                       Build all packages in benchmark workspace"
+	@echo "Management:"
+	@echo "  sim-stop-all              Stop all simulation services"
+	@echo "  sim-status-all            Show all simulation service statuses"
 	@echo ""
-	@echo "Stress Test targets:"
-	@echo "  build-stress-test           Build stress test package (alias for build)"
-	@echo "  start-stress-cyclonedds     Start stress test with CycloneDDS (shared memory)"
-	@echo "  stop-stress-cyclonedds      Stop CycloneDDS stress test"
-	@echo "  status-stress-cyclonedds    Show CycloneDDS stress test status"
-	@echo "  logs-stress-cyclonedds      View CycloneDDS stress test logs"
-	@echo "  start-stress-zenoh-router   Start Zenoh router for stress test"
-	@echo "  stop-stress-zenoh-router    Stop stress test Zenoh router"
-	@echo "  status-stress-zenoh-router  Show stress test router status"
-	@echo "  logs-stress-zenoh-router    View stress test router logs"
-	@echo "  start-stress-zenoh          Start stress test with Zenoh (shared memory)"
-	@echo "  stop-stress-zenoh           Stop Zenoh stress test"
-	@echo "  status-stress-zenoh         Show Zenoh stress test status"
-	@echo "  logs-stress-zenoh           View Zenoh stress test logs"
-	@echo "  stop-stress-all             Stop all stress test services"
+	@echo "====================================================================="
+	@echo "gscam Stress Test (gscam_stress/)"
+	@echo "====================================================================="
+	@echo "Build:"
+	@echo "  stress-build              Build stress test package"
+	@echo "  stress-clean              Clean build artifacts"
 	@echo ""
-	@echo "Management targets:"
-	@echo "  stop-all                 Stop all services"
-	@echo "  status-all               Show all service statuses"
-	@echo "  help                     Show this help message"
+	@echo "CycloneDDS:"
+	@echo "  stress-start-cyclonedds   Start stress test with CycloneDDS"
+	@echo "  stress-stop-cyclonedds    Stop CycloneDDS stress test"
+	@echo "  stress-status-cyclonedds  Show CycloneDDS status"
+	@echo "  stress-logs-cyclonedds    View CycloneDDS logs"
+	@echo ""
+	@echo "Zenoh:"
+	@echo "  stress-start-router       Start Zenoh router for stress test"
+	@echo "  stress-stop-router        Stop stress test router"
+	@echo "  stress-status-router      Show router status"
+	@echo "  stress-logs-router        View router logs"
+	@echo "  stress-start-zenoh        Start stress test with Zenoh"
+	@echo "  stress-stop-zenoh         Stop Zenoh stress test"
+	@echo "  stress-status-zenoh       Show Zenoh status"
+	@echo "  stress-logs-zenoh         View Zenoh logs"
+	@echo ""
+	@echo "Management:"
+	@echo "  stress-stop-all           Stop all stress test services"
+	@echo "  stress-status-all         Show all stress test service statuses"
+	@echo ""
+	@echo "====================================================================="
+	@echo "Global Management"
+	@echo "====================================================================="
+	@echo "  stop-all                  Stop ALL services (sim + stress)"
+	@echo "  status-all                Show ALL service statuses"
 
-.PHONY: start-sim-cyclonedds
-start-sim-cyclonedds:
-	ros2 systemd launch \
-		--name $(SERVICE_CYCLONEDDS) \
-		--replace \
-		--domain-id $(DOMAIN_ID_CYCLONEDDS) \
-		--rmw rmw_cyclonedds_cpp \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
-		--env DISPLAY=$(DISPLAY) \
-		--description "Autoware Planning Simulator with CycloneDDS" \
-		autoware_launch planning_simulator.launch.xml \
-		map_path:=$(MAP_PATH) \
-		vehicle_model:=$(VEHICLE_MODEL) \
-		sensor_model:=$(SENSOR_MODEL)
+# =============================================================================
+# Autoware Planning Simulation targets
+# =============================================================================
 
-.PHONY: stop-sim-cyclonedds
-stop-sim-cyclonedds:
-	ros2 systemd stop $(SERVICE_CYCLONEDDS)
+.PHONY: sim-start-cyclonedds sim-stop-cyclonedds sim-status-cyclonedds sim-logs-cyclonedds
+sim-start-cyclonedds:
+	$(MAKE) -C autoware_planning_simulation start-cyclonedds
 
-.PHONY: status-sim-cyclonedds
-status-sim-cyclonedds:
-	ros2 systemd status $(SERVICE_CYCLONEDDS)
+sim-stop-cyclonedds:
+	$(MAKE) -C autoware_planning_simulation stop-cyclonedds
 
-.PHONY: logs-sim-cyclonedds
-logs-sim-cyclonedds:
-	ros2 systemd logs $(SERVICE_CYCLONEDDS)
+sim-status-cyclonedds:
+	$(MAKE) -C autoware_planning_simulation status-cyclonedds
 
-.PHONY: start-zenoh-router
-start-zenoh-router:
-	ros2 systemd run \
-		--name $(SERVICE_ROUTER) \
-		--replace \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
-		--source $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash \
-		--env RUST_LOG=zenoh=info \
-		--env RMW_IMPLEMENTATION=rmw_zenoh_cpp \
-		--description "Zenoh Router Daemon for RMW Zenoh" \
-		rmw_zenoh_cpp rmw_zenohd
+sim-logs-cyclonedds:
+	$(MAKE) -C autoware_planning_simulation logs-cyclonedds
 
-.PHONY: stop-zenoh-router
-stop-zenoh-router:
-	ros2 systemd stop $(SERVICE_ROUTER)
+.PHONY: sim-start-router sim-stop-router sim-status-router sim-logs-router
+sim-start-router:
+	$(MAKE) -C autoware_planning_simulation start-router
 
-.PHONY: status-zenoh-router
-status-zenoh-router:
-	ros2 systemd status $(SERVICE_ROUTER)
+sim-stop-router:
+	$(MAKE) -C autoware_planning_simulation stop-router
 
-.PHONY: logs-zenoh-router
-logs-zenoh-router:
-	ros2 systemd logs $(SERVICE_ROUTER)
+sim-status-router:
+	$(MAKE) -C autoware_planning_simulation status-router
 
-.PHONY: start-sim-zenoh
-start-sim-zenoh:
-	@if ! systemctl --user is-active --quiet ros2-$(SERVICE_ROUTER).service 2>/dev/null; then \
-		echo "ERROR: Zenoh router is not running. Start it first with: make start-zenoh-router"; \
-		exit 1; \
-	fi
-	ros2 systemd launch \
-		--name $(SERVICE_ZENOH) \
-		--replace \
-		--domain-id $(DOMAIN_ID_ZENOH) \
-		--rmw rmw_zenoh_cpp \
-		--source $(WORKSPACE_DIR)/install/setup.bash \
-		--source $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash \
-		--env DISPLAY=$(DISPLAY) \
-		--description "Autoware Planning Simulator with Zenoh" \
-		autoware_launch planning_simulator.launch.xml \
-		map_path:=$(MAP_PATH) \
-		vehicle_model:=$(VEHICLE_MODEL) \
-		sensor_model:=$(SENSOR_MODEL)
+sim-logs-router:
+	$(MAKE) -C autoware_planning_simulation logs-router
 
-.PHONY: stop-sim-zenoh
-stop-sim-zenoh:
-	ros2 systemd stop $(SERVICE_ZENOH)
+.PHONY: sim-start-zenoh sim-stop-zenoh sim-status-zenoh sim-logs-zenoh
+sim-start-zenoh:
+	$(MAKE) -C autoware_planning_simulation start-zenoh
 
-.PHONY: status-sim-zenoh
-status-sim-zenoh:
-	ros2 systemd status $(SERVICE_ZENOH)
+sim-stop-zenoh:
+	$(MAKE) -C autoware_planning_simulation stop-zenoh
 
-.PHONY: logs-sim-zenoh
-logs-sim-zenoh:
-	ros2 systemd logs $(SERVICE_ZENOH)
+sim-status-zenoh:
+	$(MAKE) -C autoware_planning_simulation status-zenoh
+
+sim-logs-zenoh:
+	$(MAKE) -C autoware_planning_simulation logs-zenoh
+
+.PHONY: sim-stop-all sim-status-all
+sim-stop-all:
+	$(MAKE) -C autoware_planning_simulation stop-all
+
+sim-status-all:
+	$(MAKE) -C autoware_planning_simulation status-all
+
+# =============================================================================
+# gscam Stress Test targets
+# =============================================================================
+
+.PHONY: stress-build stress-clean
+stress-build:
+	$(MAKE) -C gscam_stress build
+
+stress-clean:
+	$(MAKE) -C gscam_stress clean
+
+.PHONY: stress-start-cyclonedds stress-stop-cyclonedds stress-status-cyclonedds stress-logs-cyclonedds
+stress-start-cyclonedds:
+	$(MAKE) -C gscam_stress start-cyclonedds
+
+stress-stop-cyclonedds:
+	$(MAKE) -C gscam_stress stop-cyclonedds
+
+stress-status-cyclonedds:
+	$(MAKE) -C gscam_stress status-cyclonedds
+
+stress-logs-cyclonedds:
+	$(MAKE) -C gscam_stress logs-cyclonedds
+
+.PHONY: stress-start-router stress-stop-router stress-status-router stress-logs-router
+stress-start-router:
+	$(MAKE) -C gscam_stress start-router
+
+stress-stop-router:
+	$(MAKE) -C gscam_stress stop-router
+
+stress-status-router:
+	$(MAKE) -C gscam_stress status-router
+
+stress-logs-router:
+	$(MAKE) -C gscam_stress logs-router
+
+.PHONY: stress-start-zenoh stress-stop-zenoh stress-status-zenoh stress-logs-zenoh
+stress-start-zenoh:
+	$(MAKE) -C gscam_stress start-zenoh
+
+stress-stop-zenoh:
+	$(MAKE) -C gscam_stress stop-zenoh
+
+stress-status-zenoh:
+	$(MAKE) -C gscam_stress status-zenoh
+
+stress-logs-zenoh:
+	$(MAKE) -C gscam_stress logs-zenoh
+
+.PHONY: stress-stop-all stress-status-all
+stress-stop-all:
+	$(MAKE) -C gscam_stress stop-all
+
+stress-status-all:
+	$(MAKE) -C gscam_stress status-all
+
+# =============================================================================
+# Global Management
+# =============================================================================
 
 .PHONY: stop-all
 stop-all:
-	@for service in $(SERVICE_CYCLONEDDS) $(SERVICE_ZENOH) $(SERVICE_ROUTER) $(SERVICE_STRESS_CYCLONEDDS) $(SERVICE_STRESS_ZENOH) $(SERVICE_STRESS_ROUTER); do \
-		if systemctl --user is-active --quiet ros2-$$service.service 2>/dev/null; then \
-			echo "Stopping $$service"; \
-			ros2 systemd stop $$service; \
-		fi; \
-	done
+	@echo "Stopping all services..."
+	$(MAKE) -C autoware_planning_simulation stop-all
+	$(MAKE) -C gscam_stress stop-all
 
 .PHONY: status-all
 status-all:
-	@echo "Planning Simulation Services:"
-	@for service in $(SERVICE_CYCLONEDDS) $(SERVICE_ZENOH) $(SERVICE_ROUTER); do \
-		if systemctl --user is-active --quiet ros2-$$service.service 2>/dev/null; then \
-			echo "  $$service: ACTIVE"; \
-		else \
-			echo "  $$service: INACTIVE"; \
-		fi; \
-	done
+	@echo "====================================================================="
+	@echo "Planning Simulation Services"
+	@echo "====================================================================="
+	$(MAKE) -C autoware_planning_simulation status-all
 	@echo ""
-	@echo "Stress Test Services:"
-	@for service in $(SERVICE_STRESS_CYCLONEDDS) $(SERVICE_STRESS_ZENOH) $(SERVICE_STRESS_ROUTER); do \
-		if systemctl --user is-active --quiet ros2-$$service.service 2>/dev/null; then \
-			echo "  $$service: ACTIVE"; \
-		else \
-			echo "  $$service: INACTIVE"; \
-		fi; \
-	done
-
-# ====================
-# Stress Test Targets
-# ====================
-
-# Stress test configuration
-STRESS_TEST_DIR := $(BENCHMARK_DIR)/src/stress_test
-STRESS_WIDTH := 1920
-STRESS_HEIGHT := 1080
-STRESS_FPS := 30
-
-.PHONY: build
-build:
-	@echo "Building benchmark workspace packages..."
-	cd $(BENCHMARK_DIR) && \
-	colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-
-.PHONY: build-stress-test
-build-stress-test: build
-
-.PHONY: start-stress-cyclonedds
-start-stress-cyclonedds: build-stress-test
-	@echo "Starting stress test with CycloneDDS + Shared Memory"
-	@echo "Resolution: $(STRESS_WIDTH)x$(STRESS_HEIGHT) @ $(STRESS_FPS) FPS"
-	ros2 systemd launch \
-		--name $(SERVICE_STRESS_CYCLONEDDS) \
-		--replace \
-		--domain-id $(DOMAIN_ID_CYCLONEDDS) \
-		--rmw rmw_cyclonedds_cpp \
-		--source $(BENCHMARK_DIR)/install/setup.bash \
-		--env CYCLONEDDS_URI=file://$(STRESS_TEST_DIR)/config/cyclonedds_shm.xml \
-		--description "RMW Stress Test with CycloneDDS (Shared Memory)" \
-		rmw_stress_test stress_test.launch.py \
-		width:=$(STRESS_WIDTH) \
-		height:=$(STRESS_HEIGHT) \
-		fps:=$(STRESS_FPS)
-
-.PHONY: stop-stress-cyclonedds
-stop-stress-cyclonedds:
-	ros2 systemd stop $(SERVICE_STRESS_CYCLONEDDS)
-
-.PHONY: status-stress-cyclonedds
-status-stress-cyclonedds:
-	ros2 systemd status $(SERVICE_STRESS_CYCLONEDDS)
-
-.PHONY: logs-stress-cyclonedds
-logs-stress-cyclonedds:
-	ros2 systemd logs $(SERVICE_STRESS_CYCLONEDDS)
-
-.PHONY: start-stress-zenoh-router
-start-stress-zenoh-router:
-	@echo "Starting Zenoh router for stress test with shared memory..."
-	ros2 systemd run \
-		--name $(SERVICE_STRESS_ROUTER) \
-		--replace \
-		--source $(BENCHMARK_DIR)/install/setup.bash \
-		--source $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash \
-		--env ZENOH_CONFIG=file://$(STRESS_TEST_DIR)/config/zenoh_shm.json5 \
-		--env RUST_LOG=zenoh=info \
-		--env RMW_IMPLEMENTATION=rmw_zenoh_cpp \
-		--description "Zenoh Router for Stress Test (Shared Memory)" \
-		rmw_zenoh_cpp rmw_zenohd
-
-.PHONY: stop-stress-zenoh-router
-stop-stress-zenoh-router:
-	ros2 systemd stop $(SERVICE_STRESS_ROUTER)
-
-.PHONY: status-stress-zenoh-router
-status-stress-zenoh-router:
-	ros2 systemd status $(SERVICE_STRESS_ROUTER)
-
-.PHONY: logs-stress-zenoh-router
-logs-stress-zenoh-router:
-	ros2 systemd logs $(SERVICE_STRESS_ROUTER)
-
-.PHONY: start-stress-zenoh
-start-stress-zenoh: build-stress-test
-	@if ! systemctl --user is-active --quiet ros2-$(SERVICE_STRESS_ROUTER).service 2>/dev/null; then \
-		echo "ERROR: Zenoh router is not running. Start it first with: make start-stress-zenoh-router"; \
-		exit 1; \
-	fi
-	@echo "Starting stress test with Zenoh + Shared Memory"
-	@echo "Resolution: $(STRESS_WIDTH)x$(STRESS_HEIGHT) @ $(STRESS_FPS) FPS"
-	ros2 systemd launch \
-		--name $(SERVICE_STRESS_ZENOH) \
-		--replace \
-		--domain-id $(DOMAIN_ID_ZENOH) \
-		--rmw rmw_zenoh_cpp \
-		--source $(BENCHMARK_DIR)/install/setup.bash \
-		--source $(WORKSPACE_DIR)/rmw_zenoh_ws/install/setup.bash \
-		--env ZENOH_CONFIG=file://$(STRESS_TEST_DIR)/config/zenoh_shm.json5 \
-		--description "RMW Stress Test with Zenoh (Shared Memory)" \
-		rmw_stress_test stress_test.launch.py \
-		width:=$(STRESS_WIDTH) \
-		height:=$(STRESS_HEIGHT) \
-		fps:=$(STRESS_FPS)
-
-.PHONY: stop-stress-zenoh
-stop-stress-zenoh:
-	ros2 systemd stop $(SERVICE_STRESS_ZENOH)
-
-.PHONY: status-stress-zenoh
-status-stress-zenoh:
-	ros2 systemd status $(SERVICE_STRESS_ZENOH)
-
-.PHONY: logs-stress-zenoh
-logs-stress-zenoh:
-	ros2 systemd logs $(SERVICE_STRESS_ZENOH)
-
-.PHONY: stop-stress-all
-stop-stress-all:
-	@for service in $(SERVICE_STRESS_CYCLONEDDS) $(SERVICE_STRESS_ZENOH) $(SERVICE_STRESS_ROUTER); do \
-		if systemctl --user is-active --quiet ros2-$$service.service 2>/dev/null; then \
-			echo "Stopping $$service"; \
-			ros2 systemd stop $$service; \
-		fi; \
-	done
+	@echo "====================================================================="
+	@echo "Stress Test Services"
+	@echo "====================================================================="
+	$(MAKE) -C gscam_stress status-all

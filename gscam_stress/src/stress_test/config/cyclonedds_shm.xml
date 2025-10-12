@@ -10,8 +10,10 @@
 <CycloneDDS xmlns="https://cdds.io/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
   <Domain id="any">
     <General>
-      <NetworkInterfaceAddress>lo</NetworkInterfaceAddress>
-      <AllowMulticast>false</AllowMulticast>
+      <Interfaces>
+        <NetworkInterface name="lo"/>
+      </Interfaces>
+      <AllowMulticast>default</AllowMulticast>
       <MaxMessageSize>65500B</MaxMessageSize>
       <FragmentSize>4000B</FragmentSize>
     </General>
@@ -22,14 +24,9 @@
     </Tracing>
 
     <!-- Shared Memory Configuration -->
+    <!-- Note: Iceoryx RouDi is not available, so shared memory is disabled -->
     <SharedMemory>
-      <Enable>true</Enable>
-      <LogLevel>warning</LogLevel>
-      <!-- Iceoryx configuration -->
-      <Iceoryx>
-        <Enable>true</Enable>
-        <ServiceName>rmw_stress_test</ServiceName>
-      </Iceoryx>
+      <Enable>false</Enable>
     </SharedMemory>
 
     <Discovery>
