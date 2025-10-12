@@ -1,13 +1,44 @@
 # Autoware RMW Zenoh Benchmark
 
-Tools for running Autoware planning simulator with different RMW implementations using systemd services. This approach **avoids orphan processes** when launches are terminated.
+Comprehensive benchmarking tools for comparing ROS 2 RMW implementations (CycloneDDS vs Zenoh) with high-bandwidth sensor streaming tests.
 
 ## Overview
 
-This directory provides:
-- Makefile to launch Autoware planning simulator with **CycloneDDS** or **Zenoh**
-- Systemd service management (start, stop, status, logs)
-- Environment wrapper scripts for manual ROS commands
+This repository provides:
+- **gscam_stress** - Automated benchmark suite for RMW comparison (recommended)
+  - 14 test configurations from 13 MB/s to 1424 MB/s (4K@60fps)
+  - Comprehensive performance analysis and recommendations
+  - See [gscam_stress/README.md](gscam_stress/README.md) for details
+- **Autoware planning simulator** - Full-stack testing with Autoware
+  - Makefile to launch with **CycloneDDS** or **Zenoh**
+  - Systemd service management (start, stop, status, logs)
+  - Environment wrapper scripts for manual ROS commands
+
+## Quick Start - Benchmark Suite (Recommended)
+
+The automated benchmark suite provides comprehensive RMW comparison:
+
+```bash
+cd gscam_stress
+
+# Quick test (6 configs, ~8 minutes)
+make benchmark-quick
+
+# Full suite (14 configs, ~35 minutes)
+make benchmark
+
+# Analyze results
+make benchmark-analyze
+
+# View results
+cat results/run_2025-10-13_01-02-46/summary.csv
+```
+
+**Key Findings**: Based on testing across 14 configurations (results in `gscam_stress/results/run_2025-10-13_01-02-46/`), CycloneDDS shows consistent 0.00-0.97% frame loss, while Zenoh achieves 0.00% frame loss up to 178 MB/s. See detailed metrics in the results directory.
+
+## Quick Start - Planning Simulator
+
+For full-stack Autoware testing:
 
 ## Benefits of systemd-based Launching
 
@@ -18,12 +49,9 @@ Using `ros2 systemd launch/run` instead of direct `ros2 launch` provides:
 - ✓ **Logging** - centralized log management via systemd
 - ✓ **Automatic restart** - can configure services to restart on failure
 
-## Quick Start
+## Planning Simulator Usage
 
 ```bash
-# Show available commands
-make help
-
 # CycloneDDS workflow
 make start-sim-cyclonedds
 make status-sim-cyclonedds
@@ -35,7 +63,16 @@ make start-zenoh-router
 make start-sim-zenoh
 make status-all
 make stop-all
+
+# Show all available commands
+make help
 ```
+
+---
+
+# Planning Simulator Details
+
+The planning simulator provides full-stack Autoware testing with different RMW implementations using systemd services.
 
 ## Makefile Targets
 
@@ -273,17 +310,27 @@ ps aux | grep ros2
 
 ## Files in This Directory
 
-- `Makefile` - Main interface for launching and managing services
+- `Makefile` - Main interface for launching and managing planning simulator services
 - `cyclonedds_env.sh` - Environment wrapper for CycloneDDS commands
 - `zenoh_env.sh` - Environment wrapper for Zenoh commands
+- `gscam_stress/` - **Automated benchmark suite (recommended)**
 - `README.md` - This file
+
+## Benchmark Suite
+
+For comprehensive RMW performance testing, see the **[gscam_stress](gscam_stress/)** directory:
+- Automated benchmark suite with 14 test configurations
+- Performance analysis from 13 MB/s to 1424 MB/s
+- Latest results in `gscam_stress/results/run_2025-10-13_01-02-46/`
+- CSV output and analysis tools
+
+See [gscam_stress/README.md](gscam_stress/README.md) for details.
 
 ## References
 
 - [ros2 systemd documentation](https://github.com/ubuntu-robotics/ros2_systemd)
-- [rmw_zenoh README](../rmw_zenoh_ws/rmw_zenoh/README.md)
-- [Investigation Plan](../ZENOH_INVESTIGATION_PLAN.md)
-- [Configuration Summary](../ZENOH_CONFIGURATION_SUMMARY.md)
+- [gscam_stress Benchmark Suite](gscam_stress/README.md)
+- [Latest Benchmark Results](gscam_stress/results/run_2025-10-13_01-02-46/summary.csv)
 
 ---
-*Updated: 2025-10-10*
+*Updated: 2025-10-13*
