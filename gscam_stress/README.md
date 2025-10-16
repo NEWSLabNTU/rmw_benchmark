@@ -4,15 +4,70 @@ A configurable stress test for comparing ROS 2 RMW implementations (CycloneDDS v
 
 ## Benchmark Results Summary
 
-**Latest benchmark run**: `results/run_2025-10-13_01-02-46/`
+**Latest benchmark run**: `results/run_2025-10-13_00-01-58/`
 
-Based on comprehensive testing across 14 configurations (13 MB/s to 1424 MB/s):
+### Performance Comparison: CycloneDDS vs Zenoh
 
-- **CycloneDDS**: Consistent 0.00-0.97% frame loss across all data rates
-- **Zenoh**: 0.00% frame loss up to 178 MB/s (Full HD@30fps)
-- **Performance boundary**: Testing shows different characteristics at extreme loads (>1 GB/s)
+Comprehensive testing across 14 configurations (13 MB/s to 1424 MB/s) with Reliable/Volatile QoS:
 
-See `results/run_2025-10-13_01-02-46/summary.csv` for detailed metrics.
+| Configuration   | Resolution | FPS | Data Rate | CycloneDDS Loss % | Zenoh Loss % | CycloneDDS Latency (ms) | Zenoh Latency (ms) | Winner                  |
+|-----------------|------------|-----|-----------|-------------------|--------------|-------------------------|--------------------|-------------------------|
+| low             | 640x480    | 15  | 13 MB/s   | 0.00%             | 0.00%        | 0.71                    | 1.01               | Tie (CycloneDDS faster) |
+| 640x480_30fps   | 640x480    | 30  | 26 MB/s   | 0.00%             | 0.00%        | 0.64                    | 0.91               | Tie (CycloneDDS faster) |
+| medium          | 1280x720   | 30  | 79 MB/s   | 0.86%             | 0.00%        | 1.60                    | 2.01               | **Zenoh**               |
+| 1280x720_45fps  | 1280x720   | 45  | 119 MB/s  | 1.29%             | 0.00%        | 1.50                    | 1.92               | **Zenoh**               |
+| 1280x720_60fps  | 1280x720   | 60  | 158 MB/s  | 0.62%             | 0.00%        | 1.49                    | 1.85               | **Zenoh**               |
+| high            | 1920x1080  | 30  | 178 MB/s  | 0.70%             | 0.00%        | 3.44                    | 4.23               | **Zenoh**               |
+| 1920x1080_45fps | 1920x1080  | 45  | 267 MB/s  | 0.29%             | 0.00%        | 3.38                    | 4.04               | **Zenoh**               |
+| 1080p60         | 1920x1080  | 60  | 356 MB/s  | 0.38%             | 0.00%        | 3.28                    | 3.91               | **Zenoh**               |
+| 2560x1440_30fps | 2560x1440  | 30  | 316 MB/s  | 0.38%             | 0.00%        | 6.06                    | 7.19               | **Zenoh**               |
+| 2560x1440_45fps | 2560x1440  | 45  | 475 MB/s  | 0.57%             | 0.00%        | 5.94                    | 7.04               | **Zenoh**               |
+| 2560x1440_60fps | 2560x1440  | 60  | 633 MB/s  | 0.19%             | 0.03%        | 5.92                    | 7.00               | Tie (both excellent)    |
+| extreme         | 3840x2160  | 30  | 712 MB/s  | 0.27%             | 0.05%        | 16.89                   | 22.13              | **CycloneDDS**          |
+| 3840x2160_45fps | 3840x2160  | 45  | 1068 MB/s | 0.65%             | 0.04%        | 17.29                   | 22.33              | **Zenoh**               |
+| 3840x2160_60fps | 3840x2160  | 60  | 1424 MB/s | 0.83%             | 5.13%        | 18.44                   | 27.10              | **CycloneDDS**          |
+
+### Key Findings
+
+**Maximum Capability Analysis:**
+
+1. **CycloneDDS**
+   - Maintains 0.00-0.86% frame loss across all data rates (13-1424 MB/s)
+   - Best performance at extreme loads: 4K@60fps (1424 MB/s) with only 0.83% loss
+   - Consistent low latency even at maximum throughput (18.44ms @ 1424 MB/s)
+   - **Max tested capability**: 1424 MB/s (4K@60fps) with <1% frame loss
+
+2. **Zenoh**
+   - Perfect 0.00% frame loss from 13 MB/s to 633 MB/s (2K@60fps)
+   - Maintains excellent reliability up to 1068 MB/s (4K@45fps) with only 0.04% loss
+   - Performance degradation at 4K@60fps: 5.13% frame loss at 1424 MB/s
+   - **Max tested capability**: 1068 MB/s (4K@45fps) with <0.1% frame loss
+
+**Reliability on Drop Rate:**
+
+- **Low to Medium Load (13-158 MB/s)**:
+  - CycloneDDS: 0.00-1.29% loss, lower latency
+  - Zenoh: Perfect 0.00% loss, slightly higher latency
+  - **Zenoh is more reliable** in this range (HD and below)
+
+- **Medium to High Load (178-633 MB/s)**:
+  - CycloneDDS: 0.19-0.70% loss
+  - Zenoh: 0.00-0.03% loss
+  - **Zenoh significantly more reliable** (Full HD to 2K)
+
+- **Extreme Load (712-1424 MB/s)**:
+  - CycloneDDS: 0.27-0.83% loss, consistent performance
+  - Zenoh: 0.04-5.13% loss, degrades at maximum
+  - **CycloneDDS more reliable** at extreme 4K loads
+
+**Recommendations:**
+
+- **For HD/Full HD streaming (<356 MB/s)**: Use Zenoh for zero frame loss
+- **For 2K streaming (316-633 MB/s)**: Use Zenoh for superior reliability
+- **For 4K@60fps (>1068 MB/s)**: Use CycloneDDS for consistent performance
+- **For latency-critical applications**: CycloneDDS has lower latency at most resolutions
+
+See `results/run_2025-10-13_00-01-58/summary.csv` for complete raw data.
 
 ## Automated Benchmark Suite
 
@@ -100,10 +155,10 @@ Each stress test configuration is stored in a separate file in `src/stress_test/
 
 **Note**: Data rates are for uncompressed RGB video (3 bytes per pixel).
 
-⚠️ **Performance Notes** (from `results/run_2025-10-13_01-02-46/`):
-- **CycloneDDS**: Consistent 0.00-0.97% frame loss across all loads tested
-- **Zenoh**: Excellent performance in tested range (0.00% loss up to 178 MB/s)
-- Test both RMW implementations for your specific use case at extreme loads (>1 GB/s)
+⚠️ **Performance Notes** (from `results/run_2025-10-13_00-01-58/`):
+- **CycloneDDS**: Consistent 0.00-0.86% frame loss across all loads (13-1424 MB/s), excellent for extreme 4K loads
+- **Zenoh**: Perfect 0.00% loss up to 633 MB/s (2K@60fps), 0.04% loss at 4K@45fps (1068 MB/s), degrades at 4K@60fps
+- **Recommended**: Zenoh for HD/2K streams, CycloneDDS for 4K@60fps extreme loads
 
 ### Using Different Configurations
 
@@ -397,7 +452,7 @@ To add new features:
 
 ## See Also
 
-- [results/run_2025-10-13_01-02-46/summary.csv](results/run_2025-10-13_01-02-46/summary.csv) - Benchmark results
+- [results/run_2025-10-13_00-01-58/summary.csv](results/run_2025-10-13_00-01-58/summary.csv) - Benchmark results
 - [scripts/README.md](scripts/README.md) - Benchmark automation documentation
 - [Parent README](../README.md)
 - [Stress Test Configuration Guide](STRESS_TEST_CONFIG.md)
