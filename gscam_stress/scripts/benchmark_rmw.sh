@@ -93,6 +93,36 @@ cd "$PROJECT_ROOT"
 print_info "Stopping existing services..."
 make stop-all 2>/dev/null || true
 
+# For CycloneDDS, start Iceoryx RouDi daemon for shared memory (REQUIRED)
+if [ "$RMW_TYPE" = "cyclonedds" ]; then
+    # Check if Iceoryx is installed
+    if [ ! -x "/opt/ros/humble/bin/iox-roudi" ]; then
+        print_error "Iceoryx RouDi not found at /opt/ros/humble/bin/iox-roudi"
+        print_error "Shared memory support is REQUIRED for benchmarking"
+        print_error ""
+        print_error "Install Iceoryx with:"
+        print_error "  sudo apt install ros-humble-iceoryx-posh ros-humble-iceoryx-binding-c"
+        exit 1
+    fi
+
+    # Check if RouDi is already running
+    if pgrep -x "iox-roudi" > /dev/null; then
+        print_info "Iceoryx RouDi already running"
+    else
+        print_info "Starting Iceoryx RouDi daemon for shared memory..."
+        /opt/ros/humble/bin/iox-roudi > /dev/null 2>&1 &
+        sleep 2
+
+        if pgrep -x "iox-roudi" > /dev/null; then
+            print_success "Iceoryx RouDi started"
+        else
+            print_error "Failed to start Iceoryx RouDi daemon"
+            print_error "Shared memory support is REQUIRED for benchmarking"
+            exit 1
+        fi
+    fi
+fi
+
 # For Zenoh, start router first
 if [ "$RMW_TYPE" = "zenoh" ]; then
     print_info "Starting Zenoh router..."

@@ -8,7 +8,7 @@ GSCAM_STRESS_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 
 export ROS_DOMAIN_ID=188
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI="file://$GSCAM_STRESS_DIR/src/stress_test/rmw_config/cyclonedds_shm.xml"
+export CYCLONEDDS_URI="file://$GSCAM_STRESS_DIR/rmw_config/cyclonedds_shm.xml"
 
 # Source gscam_stress workspace setup if it exists
 if [ -f "$GSCAM_STRESS_DIR/install/setup.bash" ]; then

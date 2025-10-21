@@ -24,9 +24,10 @@
     </Tracing>
 
     <!-- Shared Memory Configuration -->
-    <!-- Note: Iceoryx RouDi is not available, so shared memory is disabled -->
+    <!-- Requires Iceoryx RouDi daemon to be running: /opt/ros/humble/bin/iox-roudi -->
     <SharedMemory>
-      <Enable>false</Enable>
+      <Enable>true</Enable>
+      <Locator>iceoryx</Locator>
     </SharedMemory>
 
     <Discovery>

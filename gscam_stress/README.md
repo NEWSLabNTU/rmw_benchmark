@@ -375,11 +375,45 @@ See [STRESS_TEST_CONFIG.md](STRESS_TEST_CONFIG.md) for:
 
 ### For CycloneDDS Tests
 - rmw_cyclonedds_cpp (usually installed with ROS 2)
+- **Iceoryx packages** (REQUIRED for shared memory support):
+  ```bash
+  sudo apt install ros-humble-iceoryx-posh ros-humble-iceoryx-binding-c
+  ```
+  - These packages provide `/opt/ros/humble/bin/iox-roudi` (RouDi daemon)
+  - **Shared memory is REQUIRED** - benchmarks will fail without it
+  - Shared memory is enabled in `rmw_config/cyclonedds_shm.xml`
+  - RouDi daemon is automatically started/managed by benchmark scripts
 
 ### For Zenoh Tests
 - rmw_zenoh (built from submodule via `make build-rmw-zenoh` in root)
 
 No Autoware dependency! This test is standalone.
+
+## Shared Memory Configuration
+
+**IMPORTANT**: All benchmarks use shared memory for zero-copy transport. This is required for accurate performance comparisons.
+
+### CycloneDDS (via Iceoryx)
+- Configuration: `rmw_config/cyclonedds_shm.xml`
+- Requires Iceoryx RouDi daemon (installed via `ros-humble-iceoryx-posh`)
+- **Benchmark scripts automatically verify and start RouDi** when needed
+- Script will fail with error if Iceoryx is not installed
+- Manual control (for non-benchmark usage):
+  ```bash
+  # Start RouDi daemon
+  /opt/ros/humble/bin/iox-roudi &
+
+  # Check if RouDi is running
+  pgrep -x iox-roudi
+
+  # Stop RouDi daemon
+  killall iox-roudi
+  ```
+
+### Zenoh
+- Configuration: `rmw_config/zenoh_shm.json5`
+- Built-in shared memory support (no external daemon required)
+- Automatically enabled for local communication
 
 ## Files
 
@@ -423,13 +457,13 @@ gscam_stress/
 │   │   ├── high_transient.conf       # Full HD with TRANSIENT_LOCAL
 │   │   ├── custom.conf.example       # Template for custom configs
 │   │   └── camera.conf.example       # Template for real cameras
-│   ├── rmw_config/                   # RMW implementation configs
-│   │   ├── cyclonedds_shm.xml        # CycloneDDS configuration
-│   │   └── zenoh_shm.json5           # Zenoh configuration
 │   ├── launch/
 │   │   └── stress_test.launch.py     # Launch file
 │   └── src/
 │       └── image_subscriber_node.cpp # Subscriber with metrics
+├── rmw_config/                       # RMW implementation configs
+│   ├── cyclonedds_shm.xml            # CycloneDDS with Iceoryx shared memory
+│   └── zenoh_shm.json5               # Zenoh with shared memory
 ├── cyclonedds/
 │   ├── cyclonedds_env.sh             # CycloneDDS environment
 │   └── *.csv                         # CycloneDDS test results (generated)
