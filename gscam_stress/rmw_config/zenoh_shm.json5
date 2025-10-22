@@ -4,8 +4,8 @@
 // image streaming benchmarks, optimized for 640x480@15fps to 4K@60fps tests.
 //
 // Key features:
-// - Shared memory enabled with 256 MB pool
-// - 1 KB threshold for SHM optimization (catches all image data)
+// - Shared memory enabled with 1.4 GB pool (matches CycloneDDS/Iceoryx)
+// - 1 KB threshold for SHM optimization (matches CycloneDDS, catches all image data)
 // - QoS enabled for ROS 2 reliability/durability support
 // - Optimized buffers (16 MB) for large message bursts
 // - TCP transport on port 7448 (avoids conflict with planning sim)
@@ -257,24 +257,25 @@
         /// ENABLED: Automatically use SHM for large messages
         enabled: true,
 
-        /// Pool size: 256 MB
+        /// Pool size: 1.4 GB (matches CycloneDDS/Iceoryx)
         ///
         /// RATIONALE:
-        /// - Test range: 640x480 RGB (900 KB) to 3840x2160 RGB (24 MB)
-        /// - Buffer depth: ~10 frames (history_depth=10 + TX/RX queues)
-        /// - Required: 24 MB × 10 = 240 MB minimum
-        /// - Safety margin: 256 MB (power of 2, ~10-11 4K frames)
+        /// - Matches CycloneDDS/Iceoryx total pool size for fair comparison
+        /// - CycloneDDS uses 5 tiered pools totaling 1,452,478,800 bytes
+        /// - This config uses single unified pool of 1,500,000,000 bytes (1.4 GB)
+        /// - Sufficient for all test loads from 640x480@15fps to 4K@60fps
         ///
         /// COMPARISON:
         /// - Default Zenoh: 16 MB (insufficient for HD+)
-        /// - CycloneDDS: 1.4 GB (tiered pools, overkill for single stream)
-        /// - This config: 256 MB (balanced for test scenarios)
+        /// - Previous 256 MB: Excellent up to 4K@30fps, 6.09% loss at 4K@45fps
+        /// - Previous 512 MB: Excellent up to 4K@30fps, 1.64% loss at 4K@45fps
+        /// - This config 1.4 GB: Should match CycloneDDS performance
+        /// - CycloneDDS: 1.4 GB (tiered pools: 1KB, 128KB, 3MB, 9MB, 25MB)
         ///
-        /// ALTERNATIVES:
-        /// - 128 MB: Memory constrained, sufficient up to 1080p@60fps
-        /// - 512 MB: Multiple simultaneous high-res streams
-        /// - 1 GB+: Match CycloneDDS-level buffering
-        pool_size: 268435456,
+        /// POOL STRUCTURE DIFFERENCE:
+        /// - Zenoh: Single unified 1.4 GB pool (simple allocation)
+        /// - CycloneDDS: 5 tiered pools optimized for different message sizes
+        pool_size: 1500000000,
 
         /// Message size threshold: 1 KB
         ///
