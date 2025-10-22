@@ -438,7 +438,7 @@ benchmark:
 	@echo "======================================================================"
 	@echo "This will test 14 configurations with both CycloneDDS and Zenoh"
 	@echo "Estimated duration: ~35 minutes"
-	@cho ""
+	@echo ""
 	@$(GSCAM_STRESS_DIR)/scripts/run_boundary_test.sh 60
 
 .PHONY: benchmark-quick
