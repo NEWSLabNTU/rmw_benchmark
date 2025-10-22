@@ -2,6 +2,53 @@
 
 Comprehensive benchmarking tools for comparing ROS 2 RMW implementations (CycloneDDS vs Zenoh) with high-bandwidth sensor streaming tests.
 
+## Prerequisites
+
+### Quick Installation (Recommended)
+
+Use the provided Makefile to install all dependencies:
+
+```bash
+# Install all dependencies
+make install-deps
+
+# Or install selectively
+make install-ros-deps      # ROS 2 packages only
+make install-python-deps   # Python packages only
+
+# Verify installation
+make verify-deps
+```
+
+### Manual Installation
+
+If you prefer to install manually:
+
+```bash
+# RMW implementations
+sudo apt install ros-humble-rmw-cyclonedds-cpp ros-humble-rmw-zenoh-cpp
+
+# Iceoryx for CycloneDDS shared memory support
+sudo apt install ros-humble-iceoryx-posh ros-humble-iceoryx-binding-c
+
+# Systemd service management for ROS 2
+pip3 install --user ros2systemd
+
+# Build tools
+sudo apt install python3-colcon-common-extensions
+```
+
+### Verify Installation
+
+```bash
+# Using Makefile (recommended)
+make verify-deps
+
+# Or manually
+ros2 systemd --help
+ros2 pkg list | grep rmw
+```
+
 ## Overview
 
 This repository provides:
