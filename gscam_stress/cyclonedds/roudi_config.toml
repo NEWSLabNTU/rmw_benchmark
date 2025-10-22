@@ -1,0 +1,42 @@
+# Iceoryx RouDi Configuration for ROS 2 Image Streaming
+# For large image messages (up to 4K resolution)
+
+[general]
+version = 1
+
+# Memory segment configuration
+# Each segment can have multiple memory pools with different chunk sizes
+
+[[segment]]
+
+# Small messages (< 1 KB) - for ROS 2 parameter events, etc.
+[[segment.mempool]]
+size = 1024
+count = 10000
+
+# Medium messages (< 128 KB) - for metadata, small images
+[[segment.mempool]]
+size = 131072
+count = 1000
+
+# Large messages (~3 MB) - for 1280x720 RGB images
+# Image size: 1280 * 720 * 3 = 2,764,800 bytes
+# Add 64 bytes overhead + message header = ~2,800,000 bytes
+# Round up to 3 MB = 3,145,728 bytes
+[[segment.mempool]]
+size = 3145728
+count = 100
+
+# Extra large messages (~9 MB) - for 1920x1080 RGB images
+# Image size: 1920 * 1080 * 3 = 6,220,800 bytes
+# Round up to 9 MB = 9,437,184 bytes
+[[segment.mempool]]
+size = 9437184
+count = 50
+
+# Huge messages (~25 MB) - for 4K (3840x2160) RGB images
+# Image size: 3840 * 2160 * 3 = 24,883,200 bytes
+# Round up to 25 MB = 26,214,400 bytes
+[[segment.mempool]]
+size = 26214400
+count = 20

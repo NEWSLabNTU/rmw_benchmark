@@ -6,8 +6,12 @@
   - Shared memory transport for large messages (images)
   - Optimized for high-throughput, low-latency communication
   - Suitable for intra-host communication
+
+  Requirements:
+  - RouDi daemon must be running: /opt/ros/humble/bin/iox-roudi
+  - ROS 2 Humble with rmw_cyclonedds_cpp
 -->
-<CycloneDDS xmlns="https://cdds.io/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
+<CycloneDDS xmlns="https://cdds.io/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/iceoryx/etc/cyclonedds.xsd">
   <Domain id="any">
     <General>
       <Interfaces>
@@ -24,10 +28,10 @@
     </Tracing>
 
     <!-- Shared Memory Configuration -->
-    <!-- Requires Iceoryx RouDi daemon to be running: /opt/ros/humble/bin/iox-roudi -->
+    <!-- Requires Iceoryx RouDi daemon with custom config: cyclonedds/roudi_config.toml -->
     <SharedMemory>
       <Enable>true</Enable>
-      <Locator>iceoryx</Locator>
+      <LogLevel>info</LogLevel>
     </SharedMemory>
 
     <Discovery>
