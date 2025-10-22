@@ -372,6 +372,12 @@ See [STRESS_TEST_CONFIG.md](STRESS_TEST_CONFIG.md) for:
 ### Required
 - ROS 2 Humble (or later)
 - gscam package (`ros-humble-gscam`)
+- **ros2systemd** (for service management):
+  ```bash
+  pip install ros2systemd
+  ```
+  - Provides `ros2 systemd` command for managing ROS 2 services as systemd units
+  - Required for automated benchmark scripts and Makefile targets
 
 ### For CycloneDDS Tests
 - rmw_cyclonedds_cpp (usually installed with ROS 2)
@@ -413,7 +419,56 @@ No Autoware dependency! This test is standalone.
 ### Zenoh
 - Configuration: `rmw_config/zenoh_shm.json5`
 - Built-in shared memory support (no external daemon required)
-- Automatically enabled for local communication
+- Shared memory enabled with **256 MB pool** for zero-copy transfers
+- Optimized for image streaming from 640x480 to 4K resolution
+
+#### Zenoh Shared Memory Configuration Details
+
+The `rmw_config/zenoh_shm.json5` file is configured for high-throughput benchmarks:
+
+**Key Settings:**
+```json5
+shared_memory: {
+  enabled: true,              // Enable shared memory
+  mode: "init",               // Initialize at startup (no first-message latency)
+  transport_optimization: {
+    pool_size: 268435456,     // 256 MB shared memory pool
+    message_size_threshold: 1024,  // Use SHM for messages ≥ 1 KB
+  }
+}
+```
+
+**Pool Size Rationale (256 MB):**
+- Test range: 640x480 RGB (900 KB) to 3840x2160 RGB (24 MB)
+- Buffer depth: ~10 frames (history_depth=10 + TX/RX queues)
+- Required: 24 MB × 10 = 240 MB minimum
+- Configured: 256 MB (power of 2, provides ~10-11 4K frames)
+
+**Comparison with CycloneDDS:**
+| Aspect | Zenoh | CycloneDDS (Iceoryx) |
+|--------|-------|----------------------|
+| Pool type | Single unified pool | 5 tiered pools (1KB-25MB) |
+| Total size | 256 MB | 1.4 GB |
+| Threshold | 1 KB (all images use SHM) | Variable per pool |
+| Daemon | None (built-in) | RouDi daemon required |
+| Init mode | "init" (immediate) | Daemon must pre-start |
+
+**Alternative Pool Sizes:**
+- **128 MB**: Memory constrained systems, sufficient for ≤1080p@60fps
+- **512 MB**: Multiple simultaneous high-res streams
+- **1 GB**: Match CycloneDDS-level buffering for extreme cases
+
+**Transport Optimizations:**
+- 16 MB RX/TX buffers (vs default 64 KB) for large image bursts
+- QoS enabled with 8 priority levels (required for ROS 2)
+- Compression disabled (CPU overhead not worth it for local SHM)
+- TCP transport on port 7448 (avoids conflict with planning sim router)
+
+**Message Size Threshold (1 KB):**
+- Default Zenoh threshold is 3 KB
+- Lowered to 1 KB to catch more messages in shared memory
+- All image data (smallest: 900 KB) uses zero-copy SHM transport
+- Small ROS messages (< 1 KB) use regular TCP transport
 
 ## Files
 
