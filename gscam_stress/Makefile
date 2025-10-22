@@ -99,27 +99,30 @@ help:
 	@echo ""
 	@echo "Configuration:"
 	@echo "  show-config          Show detailed configuration"
-	@echo "  edit-config          Edit current configuration file"
 	@echo "  list-configs         List available configuration files"
 	@echo ""
 	@echo "To use a different config:"
 	@echo "  make STRESS_CONFIG=high.conf start-cyclonedds"
 	@echo ""
 	@echo "CycloneDDS Stress Test:"
-	@echo "  start-cyclonedds     Start stress test with CycloneDDS"
-	@echo "  stop-cyclonedds      Stop CycloneDDS stress test"
-	@echo "  status-cyclonedds    Show CycloneDDS stress test status"
-	@echo "  logs-cyclonedds      View CycloneDDS stress test logs"
+	@echo "  start-cyclonedds-router  Start Iceoryx RouDi daemon (required for shared memory)"
+	@echo "  stop-cyclonedds-router   Stop Iceoryx RouDi daemon"
+	@echo "  status-cyclonedds-router Show RouDi daemon status"
+	@echo "  logs-cyclonedds-router   View RouDi daemon logs"
+	@echo "  start-cyclonedds-test    Start stress test with CycloneDDS"
+	@echo "  stop-cyclonedds-test     Stop CycloneDDS stress test"
+	@echo "  status-cyclonedds-test   Show CycloneDDS stress test status"
+	@echo "  logs-cyclonedds-test     View CycloneDDS stress test logs"
 	@echo ""
 	@echo "Zenoh Stress Test:"
-	@echo "  start-router         Start Zenoh router for stress test"
-	@echo "  stop-router          Stop stress test Zenoh router"
-	@echo "  status-router        Show stress test router status"
-	@echo "  logs-router          View stress test router logs"
-	@echo "  start-zenoh          Start stress test with Zenoh"
-	@echo "  stop-zenoh           Stop Zenoh stress test"
-	@echo "  status-zenoh         Show Zenoh stress test status"
-	@echo "  logs-zenoh           View Zenoh stress test logs"
+	@echo "  start-zenoh-router   Start Zenoh router for stress test"
+	@echo "  stop-zenoh-router    Stop Zenoh router"
+	@echo "  status-zenoh-router  Show Zenoh router status"
+	@echo "  logs-zenoh-router    View Zenoh router logs"
+	@echo "  start-zenoh-test     Start stress test with Zenoh"
+	@echo "  stop-zenoh-test      Stop Zenoh stress test"
+	@echo "  status-zenoh-test    Show Zenoh stress test status"
+	@echo "  logs-zenoh-test      View Zenoh stress test logs"
 	@echo ""
 	@echo "Management targets:"
 	@echo "  stop-all             Stop all stress test services"
@@ -163,15 +166,6 @@ show-config:
 	@echo "RMW Configuration Files:"
 	@echo "  CycloneDDS: $(RMW_CONFIG_DIR)/cyclonedds_shm.xml"
 	@echo "  Zenoh:      $(RMW_CONFIG_DIR)/zenoh_shm.json5"
-	@echo ""
-	@echo "To change configuration:"
-	@echo "  1. Edit: make edit-config"
-	@echo "  2. Or use different config: make STRESS_CONFIG=high.conf start-cyclonedds"
-	@echo "  3. List available: make list-configs"
-
-.PHONY: edit-config
-edit-config:
-	@$${EDITOR:-nano} $(STRESS_CONFIG_PATH)
 
 .PHONY: list-configs
 list-configs:
@@ -208,8 +202,8 @@ build:
 clean:
 	rm -rf build install log
 
-.PHONY: start-cyclonedds
-start-cyclonedds: build
+.PHONY: start-cyclonedds-test
+start-cyclonedds-test:
 	@echo "======================================================================"
 	@echo "Starting stress test with CycloneDDS"
 	@echo "======================================================================"
@@ -246,20 +240,83 @@ start-cyclonedds: build
 		qos_liveliness:=$(QOS_LIVELINESS) \
 		qos_liveliness_lease_ms:=$(QOS_LIVELINESS_LEASE_MS)
 
-.PHONY: stop-cyclonedds
-stop-cyclonedds:
+.PHONY: stop-cyclonedds-test
+stop-cyclonedds-test:
 	@. /opt/ros/humble/setup.sh && ros2 systemd stop $(SERVICE_CYCLONEDDS)
 
-.PHONY: status-cyclonedds
-status-cyclonedds:
+.PHONY: status-cyclonedds-test
+status-cyclonedds-test:
 	@. /opt/ros/humble/setup.sh && ros2 systemd status $(SERVICE_CYCLONEDDS)
 
-.PHONY: logs-cyclonedds
-logs-cyclonedds:
+.PHONY: logs-cyclonedds-test
+logs-cyclonedds-test:
 	@. /opt/ros/humble/setup.sh && ros2 systemd logs $(SERVICE_CYCLONEDDS)
 
-.PHONY: start-router
-start-router:
+# CycloneDDS Iceoryx RouDi daemon management
+# Required for shared memory support
+.PHONY: start-cyclonedds-router
+start-cyclonedds-router:
+	@echo "Starting Iceoryx RouDi daemon for CycloneDDS shared memory..."
+	@mkdir -p $(GSCAM_STRESS_DIR)/cyclonedds
+	@if pgrep -x "iox-roudi" > /dev/null; then \
+		echo "Iceoryx RouDi already running (PID: $$(pgrep -x iox-roudi))"; \
+	else \
+		if [ -x "/opt/ros/humble/bin/iox-roudi" ]; then \
+			. /opt/ros/humble/setup.sh && \
+			/opt/ros/humble/bin/iox-roudi -c $(GSCAM_STRESS_DIR)/cyclonedds/roudi_config.toml > $(GSCAM_STRESS_DIR)/cyclonedds/roudi.log 2>&1 & \
+			sleep 2; \
+			if pgrep -x "iox-roudi" > /dev/null; then \
+				ROUDI_PID=$$(pgrep -x iox-roudi); \
+				echo $$ROUDI_PID > $(GSCAM_STRESS_DIR)/cyclonedds/roudi.pid; \
+				echo "Iceoryx RouDi started (PID: $$ROUDI_PID)"; \
+				echo "Log: $(GSCAM_STRESS_DIR)/cyclonedds/roudi.log"; \
+			else \
+				echo "ERROR: Failed to start Iceoryx RouDi"; \
+				echo "Check log: $(GSCAM_STRESS_DIR)/cyclonedds/roudi.log"; \
+				exit 1; \
+			fi; \
+		else \
+			echo "ERROR: Iceoryx RouDi not found at /opt/ros/humble/bin/iox-roudi"; \
+			echo "Install with: sudo apt install ros-humble-iceoryx-posh ros-humble-iceoryx-binding-c"; \
+			exit 1; \
+		fi; \
+	fi
+
+.PHONY: stop-cyclonedds-router
+stop-cyclonedds-router:
+	@echo "Stopping Iceoryx RouDi daemon..."
+	@if [ -f "$(GSCAM_STRESS_DIR)/cyclonedds/roudi.pid" ]; then \
+		pkill -x iox-roudi && echo "Iceoryx RouDi stopped" || echo "No RouDi process running"; \
+		rm -f $(GSCAM_STRESS_DIR)/cyclonedds/roudi.pid; \
+	else \
+		pkill -x iox-roudi && echo "Iceoryx RouDi stopped" || echo "No RouDi process running"; \
+	fi
+
+.PHONY: status-cyclonedds-router
+status-cyclonedds-router:
+	@if pgrep -x "iox-roudi" > /dev/null; then \
+		ROUDI_PID=$$(pgrep -x iox-roudi); \
+		echo "Iceoryx RouDi: RUNNING (PID: $$ROUDI_PID)"; \
+		if [ -f "$(GSCAM_STRESS_DIR)/cyclonedds/roudi.pid" ]; then \
+			echo "PID file: $(GSCAM_STRESS_DIR)/cyclonedds/roudi.pid"; \
+		fi; \
+		if [ -f "$(GSCAM_STRESS_DIR)/cyclonedds/roudi.log" ]; then \
+			echo "Log file: $(GSCAM_STRESS_DIR)/cyclonedds/roudi.log"; \
+		fi; \
+	else \
+		echo "Iceoryx RouDi: NOT RUNNING"; \
+	fi
+
+.PHONY: logs-cyclonedds-router
+logs-cyclonedds-router:
+	@if [ -f "$(GSCAM_STRESS_DIR)/cyclonedds/roudi.log" ]; then \
+		tail -50 $(GSCAM_STRESS_DIR)/cyclonedds/roudi.log; \
+	else \
+		echo "No RouDi log file found at $(GSCAM_STRESS_DIR)/cyclonedds/roudi.log"; \
+	fi
+
+.PHONY: start-zenoh-router
+start-zenoh-router:
 	@echo "Starting Zenoh router for stress test with shared memory..."
 	@. /opt/ros/humble/setup.sh && \
 	. $(GSCAM_STRESS_DIR)/install/setup.sh && \
@@ -273,22 +330,22 @@ start-router:
 		--description 'Zenoh Router for Stress Test (Shared Memory)' \
 		rmw_zenoh_cpp rmw_zenohd
 
-.PHONY: stop-router
-stop-router:
+.PHONY: stop-zenoh-router
+stop-zenoh-router:
 	@. /opt/ros/humble/setup.sh && ros2 systemd stop $(SERVICE_ROUTER)
 
-.PHONY: status-router
-status-router:
+.PHONY: status-zenoh-router
+status-zenoh-router:
 	@. /opt/ros/humble/setup.sh && ros2 systemd status $(SERVICE_ROUTER)
 
-.PHONY: logs-router
-logs-router:
+.PHONY: logs-zenoh-router
+logs-zenoh-router:
 	@. /opt/ros/humble/setup.sh && ros2 systemd logs $(SERVICE_ROUTER)
 
-.PHONY: start-zenoh
-start-zenoh: build
+.PHONY: start-zenoh-test
+start-zenoh-test:
 	@if ! systemctl --user is-active --quiet ros2-$(SERVICE_ROUTER).service 2>/dev/null; then \
-		echo "ERROR: Zenoh router is not running. Start it first with: make start-router"; \
+		echo "ERROR: Zenoh router is not running. Start it first with: make start-zenoh-router"; \
 		exit 1; \
 	fi
 	@echo "======================================================================"
@@ -327,20 +384,27 @@ start-zenoh: build
 		qos_liveliness:=$(QOS_LIVELINESS) \
 		qos_liveliness_lease_ms:=$(QOS_LIVELINESS_LEASE_MS)
 
-.PHONY: stop-zenoh
-stop-zenoh:
+.PHONY: stop-zenoh-test
+stop-zenoh-test:
 	@. /opt/ros/humble/setup.sh && ros2 systemd stop $(SERVICE_ZENOH)
 
-.PHONY: status-zenoh
-status-zenoh:
+.PHONY: status-zenoh-test
+status-zenoh-test:
 	@. /opt/ros/humble/setup.sh && ros2 systemd status $(SERVICE_ZENOH)
 
-.PHONY: logs-zenoh
-logs-zenoh:
+.PHONY: logs-zenoh-test
+logs-zenoh-test:
 	@. /opt/ros/humble/setup.sh && ros2 systemd logs $(SERVICE_ZENOH)
+
+.PHONY: start-zenoh stop-zenoh status-zenoh logs-zenoh
+start-zenoh: start-zenoh-test
+stop-zenoh: stop-zenoh-test
+status-zenoh: status-zenoh-test
+logs-zenoh: logs-zenoh-test
 
 .PHONY: stop-all
 stop-all:
+	@echo "Stopping all services..."
 	@. /opt/ros/humble/setup.sh && \
 	for service in $(SERVICE_CYCLONEDDS) $(SERVICE_ZENOH) $(SERVICE_ROUTER); do \
 		if systemctl --user is-active --quiet ros2-$$service.service 2>/dev/null; then \
@@ -348,10 +412,16 @@ stop-all:
 			ros2 systemd stop $$service; \
 		fi; \
 	done
+	@pkill -x iox-roudi && echo "Stopped Iceoryx RouDi" || true
 
 .PHONY: status-all
 status-all:
 	@echo "Stress Test Services:"
+	@if pgrep -x "iox-roudi" > /dev/null; then \
+		echo "  Iceoryx RouDi: ACTIVE (PID: $$(pgrep -x iox-roudi))"; \
+	else \
+		echo "  Iceoryx RouDi: INACTIVE"; \
+	fi
 	@for service in $(SERVICE_CYCLONEDDS) $(SERVICE_ZENOH) $(SERVICE_ROUTER); do \
 		if systemctl --user is-active --quiet ros2-$$service.service 2>/dev/null; then \
 			echo "  $$service: ACTIVE"; \
@@ -362,17 +432,17 @@ status-all:
 
 # Benchmark automation targets
 .PHONY: benchmark
-benchmark: build
+benchmark:
 	@echo "======================================================================"
 	@echo "Running Complete Benchmark Suite"
 	@echo "======================================================================"
 	@echo "This will test 14 configurations with both CycloneDDS and Zenoh"
 	@echo "Estimated duration: ~35 minutes"
-	@echo ""
+	@cho ""
 	@$(GSCAM_STRESS_DIR)/scripts/run_boundary_test.sh 60
 
 .PHONY: benchmark-quick
-benchmark-quick: build
+benchmark-quick:
 	@echo "======================================================================"
 	@echo "Running Quick Benchmark"
 	@echo "======================================================================"
