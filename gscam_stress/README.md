@@ -2,9 +2,87 @@
 
 A configurable stress test for comparing ROS 2 RMW implementations (CycloneDDS vs Zenoh) using high-resolution video streaming.
 
+## Quick Start
+
+**Recommended approach**: Start by building and running the automated benchmark suite to get comprehensive performance comparison data.
+
+### Configuration Files
+
+Before running tests, familiarize yourself with the configuration locations:
+
+- **RMW configurations** (shared memory settings): `rmw_config/`
+  - `rmw_config/cyclonedds_shm.xml` - CycloneDDS with Iceoryx shared memory
+  - `rmw_config/zenoh_shm.json5` - Zenoh with shared memory (1.4 GB pool)
+- **Test configurations** (resolution, FPS, QoS): `src/stress_test/config/`
+  - `src/stress_test/config/medium.conf` - Default: 1280x720@30fps
+  - `src/stress_test/config/high.conf` - 1920x1080@30fps
+  - `src/stress_test/config/extreme.conf` - 3840x2160@30fps
+  - See [Configuration Profiles](#configuration-profiles) for all 14 configs
+
+### 1. Build and Run Automated Benchmarks (Recommended)
+
+```bash
+# Build the stress test package
+make build
+
+# Run quick benchmark (6 configs, ~8 minutes)
+# Tests both CycloneDDS and Zenoh across key configurations
+make benchmark-quick
+
+# View results
+make benchmark-analyze
+cat results/quick_run_*/summary.csv
+
+# Optional: Run full benchmark suite (14 configs, ~35 minutes)
+make benchmark
+```
+
+The automated benchmark suite will:
+- Test both RMW implementations (CycloneDDS and Zenoh)
+- Run through multiple configurations automatically
+- Generate CSV results and analysis reports
+- Provide comprehensive performance comparison data
+
+All benchmark scripts are in `scripts/` directory. See [scripts/README.md](scripts/README.md) for details.
+
+### 2. Manual Testing (Advanced)
+
+For manual control and experimentation with specific configurations:
+
+```bash
+# View current configuration (default: medium.conf)
+make show-config
+
+# List available configurations
+make list-configs
+
+# Test with CycloneDDS
+make start-cyclonedds-router      # Start Iceoryx RouDi (required for shared memory)
+make start-cyclonedds-test        # Start stress test with default config
+
+# Monitor performance in another terminal
+ros2 topic hz /camera/image_raw
+ros2 topic bw /camera/image_raw
+
+# Stop test
+make stop-cyclonedds-test
+make stop-cyclonedds-router
+
+# Test with different config
+make STRESS_CONFIG=high.conf start-cyclonedds-test
+# Monitor...
+make stop-cyclonedds-test
+
+# Compare with Zenoh
+make start-zenoh-router           # Start Zenoh router (required)
+make STRESS_CONFIG=high.conf start-zenoh-test
+# Monitor and compare...
+make stop-all                     # Stop all services
+```
+
 ## Benchmark Results Summary
 
-**Latest benchmark run**: `results/run_2025-10-22_14-00-01/` (with Zenoh 512 MB pool)
+**Latest benchmark run**: `results/run_2025-10-22_14-40-25/` (with Zenoh 1.4 GB pool)
 
 ### Performance Comparison: CycloneDDS vs Zenoh
 
@@ -24,8 +102,8 @@ Comprehensive testing across 14 configurations (13 MB/s to 1424 MB/s) with Relia
 | 2560x1440_45fps | 2560x1440  | 45  | 475 MB/s  | 0.00%             | 0.04%        | 6.02                    | 8.95               | Tie (both excellent)    |
 | 2560x1440_60fps | 2560x1440  | 60  | 633 MB/s  | 0.00%             | 0.03%        | 6.75                    | 8.86               | Tie (both excellent)    |
 | extreme         | 3840x2160  | 30  | 712 MB/s  | 0.00%             | 0.05%        | 13.18                   | 28.27              | Tie (both excellent)    |
-| 3840x2160_45fps | 3840x2160  | 45  | 1068 MB/s | 0.00%             | 1.64%        | 15.81                   | 28.91              | **CycloneDDS**          |
-| 3840x2160_60fps | 3840x2160  | 60  | 1424 MB/s | 0.17%             | 22.62%       | 16.70                   | 27.35              | **CycloneDDS**          |
+| 3840x2160_45fps | 3840x2160  | 45  | 1068 MB/s | -0.00%            | 0.04%        | 13.04                   | 31.75              | Tie (both excellent)    |
+| 3840x2160_60fps | 3840x2160  | 60  | 1424 MB/s | 0.06%             | 36.75%       | 13.19                   | 34.88              | **CycloneDDS**          |
 
 ### Key Findings
 
@@ -33,28 +111,36 @@ Comprehensive testing across 14 configurations (13 MB/s to 1424 MB/s) with Relia
 
 1. **CycloneDDS (with Iceoryx shared memory - 1.4 GB)**
    - **Perfect 0.00% frame loss** across nearly all data rates (13-1068 MB/s)
-   - Minor degradation only at extreme 4K@60fps: 0.17% loss at 1424 MB/s
-   - Low, stable latency: 0.61ms @ 26 MB/s, 16.70ms @ 1424 MB/s
-   - **Max tested capability**: 1424 MB/s (4K@60fps) with 0.17% frame loss
+   - Minor degradation only at extreme 4K@60fps: 0.06% loss at 1424 MB/s
+   - Low, stable latency: 0.63ms @ 26 MB/s, 13.19ms @ 1424 MB/s
+   - **Max tested capability**: 1424 MB/s (4K@60fps) with 0.06% frame loss
    - Configuration: 1.4 GB Iceoryx memory pools (5 tiers: 1KB-25MB)
 
-2. **Zenoh (with 512 MB shared memory pool)**
-   - **Perfect 0.00-0.05% frame loss up to 712 MB/s (4K@30fps)**
-   - Moderate degradation at 4K@45fps: 1.64% loss at 1068 MB/s
-   - Severe degradation at 4K@60fps: 22.62% loss at 1424 MB/s
-   - **Max tested capability**: 712 MB/s (4K@30fps) with <0.1% frame loss
-   - Configuration: 512 MB unified shared memory pool (increased from 256 MB)
+2. **Zenoh (with 1.4 GB shared memory pool)**
+   - **Perfect 0.00-0.04% frame loss up to 1068 MB/s (4K@45fps)**
+   - **Severe degradation at 4K@60fps: 36.75% loss at 1424 MB/s**
+   - Higher latency than CycloneDDS at 4K loads: 31.75ms @ 1068 MB/s, 34.88ms @ 1424 MB/s
+   - **Max tested capability**: 1068 MB/s (4K@45fps) with <0.1% frame loss
+   - Configuration: 1.4 GB unified shared memory pool (matches CycloneDDS total)
 
-**Pool Size Impact (Zenoh):**
+**Pool Size Paradox (Zenoh):**
 
-Comparison of 256 MB vs 512 MB pool configurations:
-- **4K@30fps (712 MB/s)**: Both excellent (0.00% vs 0.05% loss)
-- **4K@45fps (1068 MB/s)**:
-  - 256 MB pool: 6.09% loss (moderate degradation)
-  - 512 MB pool: 1.64% loss (significant improvement, but still not excellent)
-- **4K@60fps (1424 MB/s)**:
-  - 256 MB pool: 17.69% loss (severe)
-  - 512 MB pool: 22.62% loss (worse, likely due to statistical variance and buffer management overhead)
+⚠️ **Critical finding**: Larger Zenoh pools perform WORSE at extreme loads!
+
+Comparison of 256 MB vs 512 MB vs 1.4 GB pool configurations:
+
+| Pool Size | 4K@30fps (712 MB/s) | 4K@45fps (1068 MB/s) | 4K@60fps (1424 MB/s) |
+|-----------|---------------------|----------------------|----------------------|
+| 256 MB    | 0.00% ✅            | 6.09% ❌             | 17.69% ❌            |
+| 512 MB    | 0.05% ✅            | 1.64% ⚠️             | 22.62% ❌            |
+| 1.4 GB    | 0.00% ✅            | 0.04% ✅             | **36.75%** ⛔       |
+
+**Analysis:**
+- 1.4 GB pool provides BEST performance at 4K@45fps (0.04% loss)
+- But provides WORST performance at 4K@60fps (36.75% loss - 600x worse than CycloneDDS!)
+- This suggests Zenoh's unified pool has memory management overhead that scales poorly
+- CycloneDDS's tiered pool architecture (5 pools: 1KB-25MB) is fundamentally more efficient
+- **Conclusion**: Pool size alone doesn't determine performance - architecture matters more
 
 **Reliability Analysis:**
 
@@ -66,87 +152,38 @@ Comparison of 256 MB vs 512 MB pool configurations:
 
 - **Extreme Load 4K@30fps (712 MB/s)**:
   - CycloneDDS: 0.00% loss, 13.18ms latency
-  - Zenoh: 0.05% loss, 28.27ms latency
-  - **Result**: Tie - both handle 4K@30fps excellently
+  - Zenoh: 0.00% loss, 27.43ms latency
+  - **Result**: Tie - both handle 4K@30fps excellently (CycloneDDS has lower latency)
 
 - **Extreme Load 4K@45fps (1068 MB/s)**:
-  - CycloneDDS: 0.00% loss, 15.81ms latency (excellent)
-  - Zenoh: 1.64% loss, 28.91ms latency (acceptable but not excellent)
-  - **Result**: CycloneDDS superior
+  - CycloneDDS: -0.00% loss, 13.04ms latency (excellent)
+  - Zenoh: 0.04% loss, 31.75ms latency (excellent)
+  - **Result**: Tie - both excellent (CycloneDDS has lower latency)
 
 - **Extreme Load 4K@60fps (1424 MB/s)**:
-  - CycloneDDS: 0.17% loss, 16.70ms latency (excellent)
-  - Zenoh: 22.62% loss, 27.35ms latency (unusable)
-  - **Result**: CycloneDDS clearly superior
+  - CycloneDDS: 0.06% loss, 13.19ms latency (excellent)
+  - Zenoh: **36.75% loss**, 34.88ms latency (unusable - pool size paradox)
+  - **Result**: CycloneDDS clearly superior (600x better frame loss)
 
 **Recommendations:**
 
 - **For HD/Full HD/2K streaming (up to 633 MB/s)**: Either implementation works perfectly
 - **For 4K@30fps (712 MB/s)**: Either implementation works excellently
-- **For 4K@45fps (1068 MB/s)**: Use CycloneDDS for excellent reliability (Zenoh acceptable at 1.64% loss)
-- **For 4K@60fps (1424 MB/s)**: Use CycloneDDS - Zenoh is unusable at this load
-- **For simplicity (no daemon required)**: Zenoh is sufficient up to 4K@30fps
-- **For maximum reliability across all loads**: CycloneDDS with Iceoryx
+- **For 4K@45fps (1068 MB/s)**: **Either implementation works excellently** (both <0.1% loss)
+- **For 4K@60fps (1424 MB/s)**: **Use CycloneDDS** - Zenoh suffers from pool size paradox (36.75% loss)
+- **For simplicity (no daemon required)**: Zenoh is excellent up to 4K@45fps
+- **For maximum reliability across all loads**: CycloneDDS with Iceoryx (tiered pool architecture)
 
 **Configuration Notes:**
 
 - CycloneDDS uses 1.4 GB Iceoryx shared memory (5 tiered pools) - see `cyclonedds/roudi_config.toml`
-- Zenoh uses 512 MB unified pool (updated from 256 MB) - see `rmw_config/zenoh_shm.json5`
-- Zenoh's 512 MB pool is insufficient for 4K@60fps - a larger pool (1 GB+) or CycloneDDS recommended
-- The 256→512 MB increase improved 4K@45fps significantly (6.09%→1.64% loss) but not 4K@60fps
+- Zenoh uses 1.4 GB unified pool (matches CycloneDDS total) - see `rmw_config/zenoh_shm.json5`
+- Pool size evolution: 256 MB → 512 MB → 1.4 GB
+  - Larger pools improved 4K@45fps (6.09% → 1.64% → 0.04%)
+  - But worsened 4K@60fps (17.69% → 22.62% → **36.75%**) - pool size paradox!
+- **Key insight**: Architecture (tiered vs unified) matters more than pool size alone
 
-See `results/run_2025-10-22_14-00-01/summary.csv` for complete raw data.
-
-## Automated Benchmark Suite
-
-Run comprehensive automated tests to compare RMW implementations:
-
-```bash
-# Quick test: 6 key configs, ~8 minutes
-make benchmark-quick
-
-# Full suite: 14 configs, ~35 minutes
-make benchmark
-
-# Analyze latest results
-make benchmark-analyze
-```
-
-All benchmark scripts are in `scripts/` directory. See [scripts/README.md](scripts/README.md) for details.
-
-## Quick Start
-
-```bash
-# 1. Build the stress test
-make build
-
-# 2. View current configuration (default: medium.conf)
-make show-config
-
-# 3. List available configurations
-make list-configs
-
-# 4. Run test with CycloneDDS (using default medium.conf)
-make start-cyclonedds
-
-# 5. Monitor performance
-ros2 topic hz /camera/image_raw
-ros2 topic bw /camera/image_raw
-
-# 6. Stop test
-make stop-cyclonedds
-
-# 7. Try different config (e.g., high stress)
-make STRESS_CONFIG=high.conf start-cyclonedds
-# Monitor...
-make stop-cyclonedds
-
-# 8. Compare with Zenoh
-make start-router
-make STRESS_CONFIG=high.conf start-zenoh
-# Monitor and compare...
-make stop-all
-```
+See `results/run_2025-10-22_14-40-25/summary.csv` for complete raw data.
 
 ## Configuration Profiles
 
@@ -183,7 +220,7 @@ Each stress test configuration is stored in a separate file in `src/stress_test/
 
 **Note**: Data rates are for uncompressed RGB video (3 bytes per pixel).
 
-⚠️ **Performance Notes** (from `results/run_2025-10-13_00-01-58/`):
+⚠️ **Performance Notes** (from `results/run_2025-10-22_14-40-25/`):
 - **CycloneDDS**: Consistent 0.00-0.86% frame loss across all loads (13-1424 MB/s), excellent for extreme 4K loads
 - **Zenoh**: Perfect 0.00% loss up to 633 MB/s (2K@60fps), 0.04% loss at 4K@45fps (1068 MB/s), degrades at 4K@60fps
 - **Recommended**: Zenoh for HD/2K streams, CycloneDDS for 4K@60fps extreme loads
@@ -192,13 +229,10 @@ Each stress test configuration is stored in a separate file in `src/stress_test/
 
 ```bash
 # Method 1: Specify config when starting (recommended)
-make STRESS_CONFIG=high.conf start-cyclonedds
+make STRESS_CONFIG=high.conf start-cyclonedds-test
 
 # Method 2: Set as default (edit Makefile)
 # Change: STRESS_CONFIG ?= high.conf
-
-# Method 3: Edit an existing config
-make edit-config  # Edits current config (default: medium.conf)
 
 # List all available configs
 make list-configs
@@ -215,7 +249,7 @@ make build              # Build stress test package
 make clean              # Clean build artifacts
 ```
 
-### Benchmark Automation
+### Benchmark Automation (Recommended)
 ```bash
 make benchmark          # Run complete benchmark suite (14 configs, ~35 min)
 make benchmark-quick    # Run quick benchmark (6 configs, ~8 min)
@@ -225,34 +259,42 @@ make benchmark-analyze  # Analyze latest benchmark results
 ### Configuration
 ```bash
 make show-config        # Display current configuration
-make edit-config        # Edit configuration file
 make list-configs       # List all available configurations
 ```
 
 ### CycloneDDS Tests
 ```bash
-make start-cyclonedds   # Start test with CycloneDDS
-make stop-cyclonedds    # Stop CycloneDDS test
-make status-cyclonedds  # Show service status
-make logs-cyclonedds    # View logs
+# CycloneDDS Router (Iceoryx RouDi)
+make start-cyclonedds-router   # Start Iceoryx RouDi daemon (required for shared memory)
+make stop-cyclonedds-router    # Stop Iceoryx RouDi daemon
+make status-cyclonedds-router  # Show RouDi daemon status
+make logs-cyclonedds-router    # View RouDi daemon logs
+
+# CycloneDDS Stress Test
+make start-cyclonedds-test     # Start stress test with CycloneDDS
+make stop-cyclonedds-test      # Stop CycloneDDS test
+make status-cyclonedds-test    # Show service status
+make logs-cyclonedds-test      # View logs
 ```
 
 ### Zenoh Tests
 ```bash
-make start-router       # Start Zenoh router (required first)
-make stop-router        # Stop router
-make status-router      # Show router status
-make logs-router        # View router logs
+# Zenoh Router
+make start-zenoh-router        # Start Zenoh router (required first)
+make stop-zenoh-router         # Stop router
+make status-zenoh-router       # Show router status
+make logs-zenoh-router         # View router logs
 
-make start-zenoh        # Start test with Zenoh
-make stop-zenoh         # Stop Zenoh test
-make status-zenoh       # Show service status
-make logs-zenoh         # View logs
+# Zenoh Stress Test
+make start-zenoh-test          # Start stress test with Zenoh
+make stop-zenoh-test           # Stop Zenoh test
+make status-zenoh-test         # Show service status
+make logs-zenoh-test           # View logs
 ```
 
 ### Management
 ```bash
-make stop-all           # Stop all services
+make stop-all           # Stop all services (both RMWs and routers)
 make status-all         # Show all service statuses
 ```
 
@@ -302,23 +344,24 @@ ros2 topic info /camera/image_raw -v
 
 ### Comparing RMW Implementations
 
-Run the same profile with both implementations:
+**Recommended**: Use the automated benchmark suite (`make benchmark-quick` or `make benchmark`) for comprehensive comparison.
+
+For manual comparison with specific profiles:
 
 ```bash
-# Set desired profile
-make edit-config  # e.g., PROFILE=high
-
 # Test CycloneDDS
-make start-cyclonedds
+make start-cyclonedds-router
+make STRESS_CONFIG=high.conf start-cyclonedds-test
 # Record metrics...
-make logs-cyclonedds
-make stop-cyclonedds
+make logs-cyclonedds-test
+make stop-cyclonedds-test
+make stop-cyclonedds-router
 
 # Test Zenoh
-make start-router
-make start-zenoh
+make start-zenoh-router
+make STRESS_CONFIG=high.conf start-zenoh-test
 # Compare metrics...
-make logs-zenoh
+make logs-zenoh-test
 make stop-all
 ```
 
@@ -328,7 +371,8 @@ Run for longer periods to detect issues:
 
 ```bash
 # Start test
-make start-cyclonedds
+make start-cyclonedds-router
+make start-cyclonedds-test
 
 # Monitor for several minutes/hours
 watch -n 5 'ros2 topic hz /camera/image_raw'
@@ -340,7 +384,7 @@ watch -n 5 'ros2 topic hz /camera/image_raw'
 # - Latency increases
 
 # View logs periodically
-make logs-cyclonedds
+make logs-cyclonedds-test
 ```
 
 ## Troubleshooting
@@ -447,8 +491,8 @@ No Autoware dependency! This test is standalone.
 ### Zenoh
 - Configuration: `rmw_config/zenoh_shm.json5`
 - Built-in shared memory support (no external daemon required)
-- Shared memory enabled with **512 MB pool** for zero-copy transfers
-- Optimized for image streaming from 640x480 to 4K@30fps
+- Shared memory enabled with **1.4 GB pool** (matches CycloneDDS total)
+- Optimized for image streaming from 640x480 to 4K@45fps
 
 #### Zenoh Shared Memory Configuration Details
 
@@ -460,33 +504,34 @@ shared_memory: {
   enabled: true,              // Enable shared memory
   mode: "init",               // Initialize at startup (no first-message latency)
   transport_optimization: {
-    pool_size: 536870912,     // 512 MB shared memory pool
+    pool_size: 1500000000,    // 1.4 GB shared memory pool (matches CycloneDDS)
     message_size_threshold: 1024,  // Use SHM for messages ≥ 1 KB
   }
 }
 ```
 
-**Pool Size Rationale (512 MB):**
-- Test range: 640x480 RGB (900 KB) to 3840x2160 RGB (24 MB)
-- Buffer depth: ~20 frames needed for 4K@60fps (history_depth=10 + TX/RX queues + bursts)
-- Required: 24 MB × 20 = 480 MB minimum for extreme loads
-- Configured: 512 MB (power of 2, provides ~21 4K frames)
-- **Performance**: Excellent up to 4K@30fps, acceptable at 4K@45fps (1.64% loss), insufficient for 4K@60fps
+**Pool Size Rationale (1.4 GB):**
+- Matches CycloneDDS/Iceoryx total pool size for fair comparison
+- CycloneDDS uses 5 tiered pools totaling 1,452,478,800 bytes
+- This config uses single unified pool of 1,500,000,000 bytes (1.4 GB)
+- **Performance**: Excellent up to 4K@45fps (0.04% loss), but suffers pool size paradox at 4K@60fps (36.75% loss)
 
-**Pool Size Comparison:**
-- **256 MB** (previous): Excellent up to 4K@30fps, 6.09% loss at 4K@45fps, 17.69% loss at 4K@60fps
-- **512 MB** (current): Excellent up to 4K@30fps, 1.64% loss at 4K@45fps, 22.62% loss at 4K@60fps
-- **1 GB+**: Recommended if 4K@60fps performance is critical (or use CycloneDDS)
+**Pool Size Paradox (Benchmark Results):**
+- **256 MB**: Excellent 4K@30fps, 6.09% loss @ 4K@45fps, 17.69% loss @ 4K@60fps
+- **512 MB**: Excellent 4K@30fps, 1.64% loss @ 4K@45fps, 22.62% loss @ 4K@60fps
+- **1.4 GB** (current): Excellent 4K@45fps (0.04% loss), **36.75% loss @ 4K@60fps** (WORST!)
+- **Conclusion**: Larger unified pools have memory management overhead that degrades performance at extreme loads
 
 **Comparison with CycloneDDS:**
 | Aspect | Zenoh | CycloneDDS (Iceoryx) |
 |--------|-------|----------------------|
 | Pool type | Single unified pool | 5 tiered pools (1KB-25MB) |
-| Total size | 512 MB | 1.4 GB |
+| Total size | 1.4 GB | 1.4 GB |
 | Threshold | 1 KB (all images use SHM) | Variable per pool |
 | Daemon | None (built-in) | RouDi daemon required |
 | Init mode | "init" (immediate) | Daemon must pre-start |
-| Max reliable rate | ~712 MB/s (4K@30fps) | ~1424 MB/s (4K@60fps) |
+| Max reliable rate | ~1068 MB/s (4K@45fps, <0.1% loss) | ~1424 MB/s (4K@60fps, 0.06% loss) |
+| Architecture advantage | Simpler setup | Better at extreme loads |
 
 **Transport Optimizations:**
 - 16 MB RX/TX buffers (vs default 64 KB) for large image bursts
@@ -506,14 +551,7 @@ shared_memory: {
 gscam_stress/
 ├── Makefile                          # Build and run targets
 ├── README.md                         # This file
-├── BENCHMARK_FINDINGS.md             # Comprehensive benchmark analysis
-├── STRESS_TEST_CONFIG.md             # Detailed configuration guide
 ├── scripts/                          # Benchmark automation scripts
-│   ├── README.md                     # Scripts documentation
-│   ├── benchmark_rmw.sh              # Single test runner
-│   ├── run_boundary_test.sh          # Full benchmark suite (14 configs)
-│   ├── quick_boundary_test.sh        # Quick test (6 configs)
-│   └── analyze_results.py            # Results analysis tool
 ├── results/                          # Benchmark results (generated)
 │   ├── run_TIMESTAMP/                # Full benchmark run
 │   │   ├── summary.csv               # Aggregate results
@@ -525,23 +563,7 @@ gscam_stress/
 │   ├── config/                       # Stress test configurations
 │   │   ├── low.conf                  # 640x480 @ 15 FPS
 │   │   ├── 640x480_30fps.conf        # 640x480 @ 30 FPS
-│   │   ├── medium.conf               # 1280x720 @ 30 FPS (default)
-│   │   ├── 1280x720_45fps.conf       # 1280x720 @ 45 FPS
-│   │   ├── 1280x720_60fps.conf       # 1280x720 @ 60 FPS
-│   │   ├── high.conf                 # 1920x1080 @ 30 FPS
-│   │   ├── 1920x1080_45fps.conf      # 1920x1080 @ 45 FPS
-│   │   ├── 1080p60.conf              # 1920x1080 @ 60 FPS
-│   │   ├── 2560x1440_30fps.conf      # 2560x1440 @ 30 FPS
-│   │   ├── 2560x1440_45fps.conf      # 2560x1440 @ 45 FPS
-│   │   ├── 2560x1440_60fps.conf      # 2560x1440 @ 60 FPS
-│   │   ├── extreme.conf              # 3840x2160 @ 30 FPS
-│   │   ├── 3840x2160_45fps.conf      # 3840x2160 @ 45 FPS
-│   │   ├── 3840x2160_60fps.conf      # 3840x2160 @ 60 FPS
-│   │   ├── high_besteffort.conf      # Full HD with BEST_EFFORT QoS
-│   │   ├── extreme_besteffort.conf   # 4K with BEST_EFFORT QoS
-│   │   ├── high_transient.conf       # Full HD with TRANSIENT_LOCAL
-│   │   ├── custom.conf.example       # Template for custom configs
-│   │   └── camera.conf.example       # Template for real cameras
+│   │   └── ...
 │   ├── launch/
 │   │   └── stress_test.launch.py     # Launch file
 │   └── src/
@@ -571,7 +593,7 @@ To add new features:
 
 ## See Also
 
-- [results/run_2025-10-13_00-01-58/summary.csv](results/run_2025-10-13_00-01-58/summary.csv) - Benchmark results
+- [results/run_2025-10-22_14-40-25/summary.csv](results/run_2025-10-22_14-40-25/summary.csv) - Benchmark results
 - [scripts/README.md](scripts/README.md) - Benchmark automation documentation
 - [Parent README](../README.md)
 - [Stress Test Configuration Guide](STRESS_TEST_CONFIG.md)
