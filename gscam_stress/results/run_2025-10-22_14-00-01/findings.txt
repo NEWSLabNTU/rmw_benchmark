@@ -1,0 +1,36 @@
+================================================================================
+RMW Benchmark Findings Report
+================================================================================
+
+
+CycloneDDS Frame Drop Boundaries
+--------------------------------------------------------------------------------
+
+Maximum Configuration (< 0.1% loss):
+  Resolution: 3840x2160@45fps
+  Data Rate: ~1068 MB/s
+  Frame Loss: -0.000%
+  Latency: 15.81ms (avg), 24.22ms (max)
+
+First Degradation Point (0.1-1% loss):
+  Resolution: 3840x2160@60fps
+  Data Rate: ~1424 MB/s
+  Frame Loss: 0.170%
+  Latency: 16.70ms (avg), 43.48ms (max)
+
+
+Zenoh Frame Drop Boundaries
+--------------------------------------------------------------------------------
+
+Maximum Configuration (< 0.1% loss):
+  Resolution: 3840x2160@30fps
+  Data Rate: ~712 MB/s
+  Frame Loss: 0.050%
+  Latency: 28.27ms (avg), 30.76ms (max)
+
+Moderate Degradation (1-5% loss):
+  Resolution: 3840x2160@45fps
+  Data Rate: ~1068 MB/s
+  Frame Loss: 1.640%
+  Latency: 28.91ms (avg), 27.26ms (max)
+
