@@ -4,70 +4,98 @@ A configurable stress test for comparing ROS 2 RMW implementations (CycloneDDS v
 
 ## Benchmark Results Summary
 
-**Latest benchmark run**: `results/run_2025-10-13_00-01-58/`
+**Latest benchmark run**: `results/run_2025-10-22_14-00-01/` (with Zenoh 512 MB pool)
 
 ### Performance Comparison: CycloneDDS vs Zenoh
 
-Comprehensive testing across 14 configurations (13 MB/s to 1424 MB/s) with Reliable/Volatile QoS:
+Comprehensive testing across 14 configurations (13 MB/s to 1424 MB/s) with Reliable/Volatile QoS and **shared memory enabled** for both implementations:
 
 | Configuration   | Resolution | FPS | Data Rate | CycloneDDS Loss % | Zenoh Loss % | CycloneDDS Latency (ms) | Zenoh Latency (ms) | Winner                  |
 |-----------------|------------|-----|-----------|-------------------|--------------|-------------------------|--------------------|-------------------------|
-| low             | 640x480    | 15  | 13 MB/s   | 0.00%             | 0.00%        | 0.71                    | 1.01               | Tie (CycloneDDS faster) |
-| 640x480_30fps   | 640x480    | 30  | 26 MB/s   | 0.00%             | 0.00%        | 0.64                    | 0.91               | Tie (CycloneDDS faster) |
-| medium          | 1280x720   | 30  | 79 MB/s   | 0.86%             | 0.00%        | 1.60                    | 2.01               | **Zenoh**               |
-| 1280x720_45fps  | 1280x720   | 45  | 119 MB/s  | 1.29%             | 0.00%        | 1.50                    | 1.92               | **Zenoh**               |
-| 1280x720_60fps  | 1280x720   | 60  | 158 MB/s  | 0.62%             | 0.00%        | 1.49                    | 1.85               | **Zenoh**               |
-| high            | 1920x1080  | 30  | 178 MB/s  | 0.70%             | 0.00%        | 3.44                    | 4.23               | **Zenoh**               |
-| 1920x1080_45fps | 1920x1080  | 45  | 267 MB/s  | 0.29%             | 0.00%        | 3.38                    | 4.04               | **Zenoh**               |
-| 1080p60         | 1920x1080  | 60  | 356 MB/s  | 0.38%             | 0.00%        | 3.28                    | 3.91               | **Zenoh**               |
-| 2560x1440_30fps | 2560x1440  | 30  | 316 MB/s  | 0.38%             | 0.00%        | 6.06                    | 7.19               | **Zenoh**               |
-| 2560x1440_45fps | 2560x1440  | 45  | 475 MB/s  | 0.57%             | 0.00%        | 5.94                    | 7.04               | **Zenoh**               |
-| 2560x1440_60fps | 2560x1440  | 60  | 633 MB/s  | 0.19%             | 0.03%        | 5.92                    | 7.00               | Tie (both excellent)    |
-| extreme         | 3840x2160  | 30  | 712 MB/s  | 0.27%             | 0.05%        | 16.89                   | 22.13              | **CycloneDDS**          |
-| 3840x2160_45fps | 3840x2160  | 45  | 1068 MB/s | 0.65%             | 0.04%        | 17.29                   | 22.33              | **Zenoh**               |
-| 3840x2160_60fps | 3840x2160  | 60  | 1424 MB/s | 0.83%             | 5.13%        | 18.44                   | 27.10              | **CycloneDDS**          |
+| low             | 640x480    | 15  | 13 MB/s   | 0.00%             | 0.00%        | 0.62                    | 0.79               | Tie (both excellent)    |
+| 640x480_30fps   | 640x480    | 30  | 26 MB/s   | 0.00%             | 0.00%        | 0.61                    | 0.77               | Tie (both excellent)    |
+| medium          | 1280x720   | 30  | 79 MB/s   | 0.00%             | 0.00%        | 1.65                    | 2.57               | Tie (CycloneDDS faster) |
+| 1280x720_45fps  | 1280x720   | 45  | 119 MB/s  | 0.00%             | 0.00%        | 1.64                    | 2.54               | Tie (CycloneDDS faster) |
+| 1280x720_60fps  | 1280x720   | 60  | 158 MB/s  | 0.00%             | 0.00%        | 1.62                    | 2.60               | Tie (CycloneDDS faster) |
+| high            | 1920x1080  | 30  | 178 MB/s  | 0.00%             | 0.00%        | 5.10                    | 4.34               | Tie (Zenoh faster)      |
+| 1920x1080_45fps | 1920x1080  | 45  | 267 MB/s  | 0.00%             | 0.00%        | 5.00                    | 4.46               | Tie (Zenoh faster)      |
+| 1080p60         | 1920x1080  | 60  | 356 MB/s  | 0.00%             | 0.00%        | 5.01                    | 4.44               | Tie (Zenoh faster)      |
+| 2560x1440_30fps | 2560x1440  | 30  | 316 MB/s  | 0.00%             | 0.00%        | 6.37                    | 8.81               | Tie (CycloneDDS faster) |
+| 2560x1440_45fps | 2560x1440  | 45  | 475 MB/s  | 0.00%             | 0.04%        | 6.02                    | 8.95               | Tie (both excellent)    |
+| 2560x1440_60fps | 2560x1440  | 60  | 633 MB/s  | 0.00%             | 0.03%        | 6.75                    | 8.86               | Tie (both excellent)    |
+| extreme         | 3840x2160  | 30  | 712 MB/s  | 0.00%             | 0.05%        | 13.18                   | 28.27              | Tie (both excellent)    |
+| 3840x2160_45fps | 3840x2160  | 45  | 1068 MB/s | 0.00%             | 1.64%        | 15.81                   | 28.91              | **CycloneDDS**          |
+| 3840x2160_60fps | 3840x2160  | 60  | 1424 MB/s | 0.17%             | 22.62%       | 16.70                   | 27.35              | **CycloneDDS**          |
 
 ### Key Findings
 
 **Maximum Capability Analysis:**
 
-1. **CycloneDDS**
-   - Maintains 0.00-0.86% frame loss across all data rates (13-1424 MB/s)
-   - Best performance at extreme loads: 4K@60fps (1424 MB/s) with only 0.83% loss
-   - Consistent low latency even at maximum throughput (18.44ms @ 1424 MB/s)
-   - **Max tested capability**: 1424 MB/s (4K@60fps) with <1% frame loss
+1. **CycloneDDS (with Iceoryx shared memory - 1.4 GB)**
+   - **Perfect 0.00% frame loss** across nearly all data rates (13-1068 MB/s)
+   - Minor degradation only at extreme 4K@60fps: 0.17% loss at 1424 MB/s
+   - Low, stable latency: 0.61ms @ 26 MB/s, 16.70ms @ 1424 MB/s
+   - **Max tested capability**: 1424 MB/s (4K@60fps) with 0.17% frame loss
+   - Configuration: 1.4 GB Iceoryx memory pools (5 tiers: 1KB-25MB)
 
-2. **Zenoh**
-   - Perfect 0.00% frame loss from 13 MB/s to 633 MB/s (2K@60fps)
-   - Maintains excellent reliability up to 1068 MB/s (4K@45fps) with only 0.04% loss
-   - Performance degradation at 4K@60fps: 5.13% frame loss at 1424 MB/s
-   - **Max tested capability**: 1068 MB/s (4K@45fps) with <0.1% frame loss
+2. **Zenoh (with 512 MB shared memory pool)**
+   - **Perfect 0.00-0.05% frame loss up to 712 MB/s (4K@30fps)**
+   - Moderate degradation at 4K@45fps: 1.64% loss at 1068 MB/s
+   - Severe degradation at 4K@60fps: 22.62% loss at 1424 MB/s
+   - **Max tested capability**: 712 MB/s (4K@30fps) with <0.1% frame loss
+   - Configuration: 512 MB unified shared memory pool (increased from 256 MB)
 
-**Reliability on Drop Rate:**
+**Pool Size Impact (Zenoh):**
 
-- **Low to Medium Load (13-158 MB/s)**:
-  - CycloneDDS: 0.00-1.29% loss, lower latency
-  - Zenoh: Perfect 0.00% loss, slightly higher latency
-  - **Zenoh is more reliable** in this range (HD and below)
+Comparison of 256 MB vs 512 MB pool configurations:
+- **4K@30fps (712 MB/s)**: Both excellent (0.00% vs 0.05% loss)
+- **4K@45fps (1068 MB/s)**:
+  - 256 MB pool: 6.09% loss (moderate degradation)
+  - 512 MB pool: 1.64% loss (significant improvement, but still not excellent)
+- **4K@60fps (1424 MB/s)**:
+  - 256 MB pool: 17.69% loss (severe)
+  - 512 MB pool: 22.62% loss (worse, likely due to statistical variance and buffer management overhead)
 
-- **Medium to High Load (178-633 MB/s)**:
-  - CycloneDDS: 0.19-0.70% loss
-  - Zenoh: 0.00-0.03% loss
-  - **Zenoh significantly more reliable** (Full HD to 2K)
+**Reliability Analysis:**
 
-- **Extreme Load (712-1424 MB/s)**:
-  - CycloneDDS: 0.27-0.83% loss, consistent performance
-  - Zenoh: 0.04-5.13% loss, degrades at maximum
-  - **CycloneDDS more reliable** at extreme 4K loads
+- **Low to High Load (13-633 MB/s)**:
+  - **Both implementations**: Perfect 0.00-0.04% frame loss
+  - CycloneDDS: Lower latency at HD/2K resolutions (1-7ms)
+  - Zenoh: Lower latency at Full HD resolutions (4ms vs 5ms)
+  - **Result**: Tie - both excellent for production use
+
+- **Extreme Load 4K@30fps (712 MB/s)**:
+  - CycloneDDS: 0.00% loss, 13.18ms latency
+  - Zenoh: 0.05% loss, 28.27ms latency
+  - **Result**: Tie - both handle 4K@30fps excellently
+
+- **Extreme Load 4K@45fps (1068 MB/s)**:
+  - CycloneDDS: 0.00% loss, 15.81ms latency (excellent)
+  - Zenoh: 1.64% loss, 28.91ms latency (acceptable but not excellent)
+  - **Result**: CycloneDDS superior
+
+- **Extreme Load 4K@60fps (1424 MB/s)**:
+  - CycloneDDS: 0.17% loss, 16.70ms latency (excellent)
+  - Zenoh: 22.62% loss, 27.35ms latency (unusable)
+  - **Result**: CycloneDDS clearly superior
 
 **Recommendations:**
 
-- **For HD/Full HD streaming (<356 MB/s)**: Use Zenoh for zero frame loss
-- **For 2K streaming (316-633 MB/s)**: Use Zenoh for superior reliability
-- **For 4K@60fps (>1068 MB/s)**: Use CycloneDDS for consistent performance
-- **For latency-critical applications**: CycloneDDS has lower latency at most resolutions
+- **For HD/Full HD/2K streaming (up to 633 MB/s)**: Either implementation works perfectly
+- **For 4K@30fps (712 MB/s)**: Either implementation works excellently
+- **For 4K@45fps (1068 MB/s)**: Use CycloneDDS for excellent reliability (Zenoh acceptable at 1.64% loss)
+- **For 4K@60fps (1424 MB/s)**: Use CycloneDDS - Zenoh is unusable at this load
+- **For simplicity (no daemon required)**: Zenoh is sufficient up to 4K@30fps
+- **For maximum reliability across all loads**: CycloneDDS with Iceoryx
 
-See `results/run_2025-10-13_00-01-58/summary.csv` for complete raw data.
+**Configuration Notes:**
+
+- CycloneDDS uses 1.4 GB Iceoryx shared memory (5 tiered pools) - see `cyclonedds/roudi_config.toml`
+- Zenoh uses 512 MB unified pool (updated from 256 MB) - see `rmw_config/zenoh_shm.json5`
+- Zenoh's 512 MB pool is insufficient for 4K@60fps - a larger pool (1 GB+) or CycloneDDS recommended
+- The 256→512 MB increase improved 4K@45fps significantly (6.09%→1.64% loss) but not 4K@60fps
+
+See `results/run_2025-10-22_14-00-01/summary.csv` for complete raw data.
 
 ## Automated Benchmark Suite
 
@@ -419,8 +447,8 @@ No Autoware dependency! This test is standalone.
 ### Zenoh
 - Configuration: `rmw_config/zenoh_shm.json5`
 - Built-in shared memory support (no external daemon required)
-- Shared memory enabled with **256 MB pool** for zero-copy transfers
-- Optimized for image streaming from 640x480 to 4K resolution
+- Shared memory enabled with **512 MB pool** for zero-copy transfers
+- Optimized for image streaming from 640x480 to 4K@30fps
 
 #### Zenoh Shared Memory Configuration Details
 
@@ -432,31 +460,33 @@ shared_memory: {
   enabled: true,              // Enable shared memory
   mode: "init",               // Initialize at startup (no first-message latency)
   transport_optimization: {
-    pool_size: 268435456,     // 256 MB shared memory pool
+    pool_size: 536870912,     // 512 MB shared memory pool
     message_size_threshold: 1024,  // Use SHM for messages ≥ 1 KB
   }
 }
 ```
 
-**Pool Size Rationale (256 MB):**
+**Pool Size Rationale (512 MB):**
 - Test range: 640x480 RGB (900 KB) to 3840x2160 RGB (24 MB)
-- Buffer depth: ~10 frames (history_depth=10 + TX/RX queues)
-- Required: 24 MB × 10 = 240 MB minimum
-- Configured: 256 MB (power of 2, provides ~10-11 4K frames)
+- Buffer depth: ~20 frames needed for 4K@60fps (history_depth=10 + TX/RX queues + bursts)
+- Required: 24 MB × 20 = 480 MB minimum for extreme loads
+- Configured: 512 MB (power of 2, provides ~21 4K frames)
+- **Performance**: Excellent up to 4K@30fps, acceptable at 4K@45fps (1.64% loss), insufficient for 4K@60fps
+
+**Pool Size Comparison:**
+- **256 MB** (previous): Excellent up to 4K@30fps, 6.09% loss at 4K@45fps, 17.69% loss at 4K@60fps
+- **512 MB** (current): Excellent up to 4K@30fps, 1.64% loss at 4K@45fps, 22.62% loss at 4K@60fps
+- **1 GB+**: Recommended if 4K@60fps performance is critical (or use CycloneDDS)
 
 **Comparison with CycloneDDS:**
 | Aspect | Zenoh | CycloneDDS (Iceoryx) |
 |--------|-------|----------------------|
 | Pool type | Single unified pool | 5 tiered pools (1KB-25MB) |
-| Total size | 256 MB | 1.4 GB |
+| Total size | 512 MB | 1.4 GB |
 | Threshold | 1 KB (all images use SHM) | Variable per pool |
 | Daemon | None (built-in) | RouDi daemon required |
 | Init mode | "init" (immediate) | Daemon must pre-start |
-
-**Alternative Pool Sizes:**
-- **128 MB**: Memory constrained systems, sufficient for ≤1080p@60fps
-- **512 MB**: Multiple simultaneous high-res streams
-- **1 GB**: Match CycloneDDS-level buffering for extreme cases
+| Max reliable rate | ~712 MB/s (4K@30fps) | ~1424 MB/s (4K@60fps) |
 
 **Transport Optimizations:**
 - 16 MB RX/TX buffers (vs default 64 KB) for large image bursts
