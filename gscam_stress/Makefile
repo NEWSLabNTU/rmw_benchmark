@@ -7,7 +7,6 @@ SHELL := /bin/bash
 GSCAM_STRESS_DIR := $(shell pwd)
 MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BENCHMARK_ROOT := $(shell cd "$(MAKEFILE_DIR)/.." && pwd)
-RMW_ZENOH_INSTALL := $(BENCHMARK_ROOT)/common/rmw_zenoh/install
 
 # Service names
 SERVICE_CYCLONEDDS := stress-test-cyclonedds
@@ -264,12 +263,10 @@ start-router:
 	@echo "Starting Zenoh router for stress test with shared memory..."
 	@. /opt/ros/humble/setup.sh && \
 	. $(GSCAM_STRESS_DIR)/install/setup.sh && \
-	. $(RMW_ZENOH_INSTALL)/setup.sh && \
 	ros2 systemd run \
 		--name $(SERVICE_ROUTER) \
 		--replace \
 		--source $(GSCAM_STRESS_DIR)/install/setup.sh \
-		--source $(RMW_ZENOH_INSTALL)/setup.sh \
 		--env ZENOH_CONFIG=file://$(RMW_CONFIG_DIR)/zenoh_shm.json5 \
 		--env RUST_LOG=zenoh=info \
 		--env RMW_IMPLEMENTATION=rmw_zenoh_cpp \
@@ -309,14 +306,12 @@ start-zenoh: build
 	@echo "CSV output: $(CSV_PATH)"
 	@. /opt/ros/humble/setup.sh && \
 	. $(GSCAM_STRESS_DIR)/install/setup.sh && \
-	. $(RMW_ZENOH_INSTALL)/setup.sh && \
 	ros2 systemd launch \
 		--name $(SERVICE_ZENOH) \
 		--replace \
 		--domain-id $(DOMAIN_ID_ZENOH) \
 		--rmw rmw_zenoh_cpp \
 		--source $(GSCAM_STRESS_DIR)/install/setup.sh \
-		--source $(RMW_ZENOH_INSTALL)/setup.sh \
 		--env ZENOH_CONFIG=file://$(RMW_CONFIG_DIR)/zenoh_shm.json5 \
 		--description 'RMW Stress Test with Zenoh ($(PROFILE_NAME))' \
 		rmw_stress_test stress_test.launch.py \

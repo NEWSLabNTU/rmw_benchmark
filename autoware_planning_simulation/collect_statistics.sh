@@ -25,11 +25,13 @@ mkdir -p "$OUTPUT_DIR"
 # Setup environment
 export ROS_DOMAIN_ID="$DOMAIN_ID"
 export RMW_IMPLEMENTATION="$RMW_IMPLEMENTATION"
-source "$WORKSPACE_DIR/install/setup.bash"
 
-# Source Zenoh workspace if using Zenoh
-if [ "$RMW_IMPLEMENTATION" == "rmw_zenoh_cpp" ]; then
-    source "$WORKSPACE_DIR/rmw_zenoh_ws/install/setup.bash"
+# Source ROS 2 setup (includes rmw_zenoh_cpp system package)
+source /opt/ros/humble/setup.bash
+
+# Source Autoware workspace if it exists
+if [ -f "$SCRIPT_DIR/autoware/install/setup.bash" ]; then
+    source "$SCRIPT_DIR/autoware/install/setup.bash"
 fi
 
 echo "=========================================="

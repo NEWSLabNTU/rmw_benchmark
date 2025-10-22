@@ -20,13 +20,8 @@ else
     echo "WARNING: gscam_stress not built yet. Run 'make build' in $GSCAM_STRESS_DIR"
 fi
 
-# Source rmw_zenoh workspace setup (from submodule)
-RMW_ZENOH_INSTALL="$BENCHMARK_ROOT/common/rmw_zenoh/install"
-if [ -f "$RMW_ZENOH_INSTALL/setup.bash" ]; then
-    . "$RMW_ZENOH_INSTALL/setup.bash"
-else
-    echo "WARNING: rmw_zenoh not built yet. Run 'make build-rmw-zenoh' in $BENCHMARK_ROOT"
-fi
+# rmw_zenoh_cpp is installed as system package (ros-humble-rmw-zenoh-cpp)
+# It's already included when sourcing /opt/ros/humble/setup.bash
 
 # Execute the command passed as arguments, or start a shell if none
 if [ $# -eq 0 ]; then

@@ -7,7 +7,6 @@ SHELL := /bin/bash
 MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BENCHMARK_ROOT := $(shell cd "$(MAKEFILE_DIR)/.." && pwd)
 AUTOWARE_DIR := $(MAKEFILE_DIR)/autoware
-RMW_ZENOH_INSTALL := $(BENCHMARK_ROOT)/common/rmw_zenoh/install
 
 # Service names
 SERVICE_CYCLONEDDS := autoware-planning-cyclonedds
@@ -79,7 +78,6 @@ start-router:
 		--name $(SERVICE_ROUTER) \
 		--replace \
 		--source $(AUTOWARE_DIR)/install/setup.bash \
-		--source $(RMW_ZENOH_INSTALL)/setup.bash \
 		--env RUST_LOG=zenoh=info \
 		--env RMW_IMPLEMENTATION=rmw_zenoh_cpp \
 		--description "Zenoh Router Daemon for RMW Zenoh" \
@@ -109,7 +107,6 @@ start-zenoh:
 		--domain-id $(DOMAIN_ID_ZENOH) \
 		--rmw rmw_zenoh_cpp \
 		--source $(AUTOWARE_DIR)/install/setup.bash \
-		--source $(RMW_ZENOH_INSTALL)/setup.bash \
 		--env DISPLAY=$(DISPLAY) \
 		--description "Autoware Planning Simulator with Zenoh" \
 		autoware_launch planning_simulator.launch.xml \
