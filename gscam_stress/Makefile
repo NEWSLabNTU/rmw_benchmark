@@ -21,7 +21,7 @@ DOMAIN_ID_ZENOH := 189
 # Stress test configuration
 STRESS_TEST_DIR := $(GSCAM_STRESS_DIR)/src/stress_test
 CONFIG_DIR := $(STRESS_TEST_DIR)/config
-RMW_CONFIG_DIR := $(STRESS_TEST_DIR)/rmw_config
+RMW_CONFIG_DIR := $(GSCAM_STRESS_DIR)/rmw_config
 
 # Select config file (can be overridden: make STRESS_CONFIG=high.conf start-cyclonedds)
 STRESS_CONFIG ?= medium.conf
@@ -201,6 +201,7 @@ list-configs:
 .PHONY: build
 build:
 	@echo "Building stress test package..."
+	@. /opt/ros/humble/setup.sh && \
 	cd $(GSCAM_STRESS_DIR) && \
 	colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
@@ -223,15 +224,16 @@ start-cyclonedds: build
 	@$(eval CSV_DATETIME := $(shell date +%Y-%m-%d_%H-%M-%S))
 	@$(eval CSV_PATH := $(GSCAM_STRESS_DIR)/cyclonedds/$(CSV_DATETIME).csv)
 	@echo "CSV output: $(CSV_PATH)"
-	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
+	@. /opt/ros/humble/setup.sh && \
+	. $(GSCAM_STRESS_DIR)/install/setup.sh && \
 	ros2 systemd launch \
 		--name $(SERVICE_CYCLONEDDS) \
 		--replace \
 		--domain-id $(DOMAIN_ID_CYCLONEDDS) \
 		--rmw rmw_cyclonedds_cpp \
-		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
+		--source $(GSCAM_STRESS_DIR)/install/setup.sh \
 		--env CYCLONEDDS_URI=file://$(RMW_CONFIG_DIR)/cyclonedds_shm.xml \
-		--description "RMW Stress Test with CycloneDDS ($(PROFILE_NAME))" \
+		--description 'RMW Stress Test with CycloneDDS ($(PROFILE_NAME))' \
 		rmw_stress_test stress_test.launch.py \
 		width:=$(WIDTH) \
 		height:=$(HEIGHT) \
@@ -247,43 +249,44 @@ start-cyclonedds: build
 
 .PHONY: stop-cyclonedds
 stop-cyclonedds:
-	ros2 systemd stop $(SERVICE_CYCLONEDDS)
+	@. /opt/ros/humble/setup.sh && ros2 systemd stop $(SERVICE_CYCLONEDDS)
 
 .PHONY: status-cyclonedds
 status-cyclonedds:
-	ros2 systemd status $(SERVICE_CYCLONEDDS)
+	@. /opt/ros/humble/setup.sh && ros2 systemd status $(SERVICE_CYCLONEDDS)
 
 .PHONY: logs-cyclonedds
 logs-cyclonedds:
-	ros2 systemd logs $(SERVICE_CYCLONEDDS)
+	@. /opt/ros/humble/setup.sh && ros2 systemd logs $(SERVICE_CYCLONEDDS)
 
 .PHONY: start-router
 start-router:
 	@echo "Starting Zenoh router for stress test with shared memory..."
-	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
-	. $(RMW_ZENOH_INSTALL)/setup.bash && \
+	@. /opt/ros/humble/setup.sh && \
+	. $(GSCAM_STRESS_DIR)/install/setup.sh && \
+	. $(RMW_ZENOH_INSTALL)/setup.sh && \
 	ros2 systemd run \
 		--name $(SERVICE_ROUTER) \
 		--replace \
-		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
-		--source $(RMW_ZENOH_INSTALL)/setup.bash \
+		--source $(GSCAM_STRESS_DIR)/install/setup.sh \
+		--source $(RMW_ZENOH_INSTALL)/setup.sh \
 		--env ZENOH_CONFIG=file://$(RMW_CONFIG_DIR)/zenoh_shm.json5 \
 		--env RUST_LOG=zenoh=info \
 		--env RMW_IMPLEMENTATION=rmw_zenoh_cpp \
-		--description "Zenoh Router for Stress Test (Shared Memory)" \
+		--description 'Zenoh Router for Stress Test (Shared Memory)' \
 		rmw_zenoh_cpp rmw_zenohd
 
 .PHONY: stop-router
 stop-router:
-	ros2 systemd stop $(SERVICE_ROUTER)
+	@. /opt/ros/humble/setup.sh && ros2 systemd stop $(SERVICE_ROUTER)
 
 .PHONY: status-router
 status-router:
-	ros2 systemd status $(SERVICE_ROUTER)
+	@. /opt/ros/humble/setup.sh && ros2 systemd status $(SERVICE_ROUTER)
 
 .PHONY: logs-router
 logs-router:
-	ros2 systemd logs $(SERVICE_ROUTER)
+	@. /opt/ros/humble/setup.sh && ros2 systemd logs $(SERVICE_ROUTER)
 
 .PHONY: start-zenoh
 start-zenoh: build
@@ -304,17 +307,18 @@ start-zenoh: build
 	@$(eval CSV_DATETIME := $(shell date +%Y-%m-%d_%H-%M-%S))
 	@$(eval CSV_PATH := $(GSCAM_STRESS_DIR)/zenoh/$(CSV_DATETIME).csv)
 	@echo "CSV output: $(CSV_PATH)"
-	@. $(GSCAM_STRESS_DIR)/install/setup.bash && \
-	. $(RMW_ZENOH_INSTALL)/setup.bash && \
+	@. /opt/ros/humble/setup.sh && \
+	. $(GSCAM_STRESS_DIR)/install/setup.sh && \
+	. $(RMW_ZENOH_INSTALL)/setup.sh && \
 	ros2 systemd launch \
 		--name $(SERVICE_ZENOH) \
 		--replace \
 		--domain-id $(DOMAIN_ID_ZENOH) \
 		--rmw rmw_zenoh_cpp \
-		--source $(GSCAM_STRESS_DIR)/install/setup.bash \
-		--source $(RMW_ZENOH_INSTALL)/setup.bash \
+		--source $(GSCAM_STRESS_DIR)/install/setup.sh \
+		--source $(RMW_ZENOH_INSTALL)/setup.sh \
 		--env ZENOH_CONFIG=file://$(RMW_CONFIG_DIR)/zenoh_shm.json5 \
-		--description "RMW Stress Test with Zenoh ($(PROFILE_NAME))" \
+		--description 'RMW Stress Test with Zenoh ($(PROFILE_NAME))' \
 		rmw_stress_test stress_test.launch.py \
 		width:=$(WIDTH) \
 		height:=$(HEIGHT) \
@@ -330,19 +334,20 @@ start-zenoh: build
 
 .PHONY: stop-zenoh
 stop-zenoh:
-	ros2 systemd stop $(SERVICE_ZENOH)
+	@. /opt/ros/humble/setup.sh && ros2 systemd stop $(SERVICE_ZENOH)
 
 .PHONY: status-zenoh
 status-zenoh:
-	ros2 systemd status $(SERVICE_ZENOH)
+	@. /opt/ros/humble/setup.sh && ros2 systemd status $(SERVICE_ZENOH)
 
 .PHONY: logs-zenoh
 logs-zenoh:
-	ros2 systemd logs $(SERVICE_ZENOH)
+	@. /opt/ros/humble/setup.sh && ros2 systemd logs $(SERVICE_ZENOH)
 
 .PHONY: stop-all
 stop-all:
-	@for service in $(SERVICE_CYCLONEDDS) $(SERVICE_ZENOH) $(SERVICE_ROUTER); do \
+	@. /opt/ros/humble/setup.sh && \
+	for service in $(SERVICE_CYCLONEDDS) $(SERVICE_ZENOH) $(SERVICE_ROUTER); do \
 		if systemctl --user is-active --quiet ros2-$$service.service 2>/dev/null; then \
 			echo "Stopping $$service"; \
 			ros2 systemd stop $$service; \
