@@ -1,54 +1,321 @@
-// Zenoh configuration with Shared Memory support for Stress Test
+// Zenoh Configuration with Shared Memory for RMW Stress Tests
 //
-// This configuration enables:
-// - Shared memory transport for high-throughput communication
-// - Optimized for large message transfer (images)
-// - Suitable for intra-host communication
-// - Uses non-default ports to avoid conflicts with planning simulation router
+// This configuration enables shared memory transport for high-throughput
+// image streaming benchmarks, optimized for 640x480@15fps to 4K@60fps tests.
+//
+// Key features:
+// - Shared memory enabled with 256 MB pool
+// - 1 KB threshold for SHM optimization (catches all image data)
+// - QoS enabled for ROS 2 reliability/durability support
+// - Optimized buffers (16 MB) for large message bursts
+// - TCP transport on port 7448 (avoids conflict with planning sim)
+//
+// Based on: ros2/rmw_zenoh DEFAULT_RMW_ZENOH_SESSION_CONFIG.json5
+// Customized for: High-bandwidth sensor streaming benchmarks
 
 {
+  /// Node mode: peer (connects to router, can communicate with other peers)
   mode: "peer",
 
-  // Shared Memory configuration
-  transport: {
-    shared_memory: {
-      enabled: true,
-    },
-    unicast: {
-      lowlatency: true,
-    },
-  },
-
-  // Listen on specific port to avoid conflicts
-  listen: {
-    endpoints: ["tcp/0.0.0.0:7448"],
-  },
-
-  // Connect configuration
+  /// Connection endpoints
   connect: {
-    endpoints: [],
+    /// Timeout configuration for different node types
+    timeout_ms: { router: -1, peer: -1, client: 0 },
+
+    /// Connect to Zenoh router on localhost
+    /// Note: Router must be started separately (make start-zenoh-router)
+    endpoints: [
+      "tcp/localhost:7447"
+    ],
+
+    /// Exit on connection failure
+    exit_on_failure: { router: false, peer: false, client: true },
+
+    /// Connection retry configuration
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 4000,
+      period_increase_factor: 2,
+    },
   },
 
-  // SHM (Shared Memory) configuration
+  /// Listen endpoints
+  listen: {
+    timeout_ms: 0,
+
+    /// Listen on port 7448 (different from router's 7447)
+    /// Accepts connections from localhost only (colocated nodes)
+    endpoints: [
+      "tcp/localhost:7448"
+    ],
+
+    exit_on_failure: true,
+
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 4000,
+      period_increase_factor: 2,
+    },
+  },
+
+  /// Session open behavior
+  open: {
+    return_conditions: {
+      /// Wait for scouted peers/routers before returning
+      connect_scouted: true,
+      /// Wait for initial declares from connected peers
+      declares: true,
+    },
+  },
+
+  /// Discovery and scouting configuration
   scouting: {
+    /// Client mode scouting timeout
+    timeout: 3000,
+    /// Peer mode scouting delay
+    delay: 500,
+
+    /// Multicast scouting: DISABLED (ROS recommendation)
     multicast: {
       enabled: false,
+      address: "224.0.0.224:7446",
+      interface: "auto",
+      ttl: 1,
+      autoconnect: { router: [], peer: ["router", "peer"], client: ["router"] },
+      autoconnect_strategy: { peer: { to_router: "always", to_peer: "greater-zid" } },
+      listen: true,
+    },
+
+    /// Gossip scouting: ENABLED
+    gossip: {
+      enabled: true,
+      multihop: false,
+      /// Peers send gossip only to router (reduces startup traffic)
+      target: { router: ["router", "peer"], peer: ["router"]},
+      autoconnect: { router: [], peer: ["router", "peer"] },
+      autoconnect_strategy: { peer: { to_router: "always", to_peer: "greater-zid" } },
     },
   },
 
+  /// Timestamping: ENABLED (required for transient_local durability)
   timestamping: {
-    enabled: true,
+    enabled: { router: true, peer: true, client: true },
+    drop_future_timestamp: false,
   },
 
-  plugins: {
-    // Storage plugin for shared memory
-    storage_manager: {
-      storages: {},
+  /// Default query timeout: 10 minutes
+  queries_default_timeout: 600000,
+
+  /// Routing configuration
+  routing: {
+    router: {
+      peers_failover_brokering: true,
+    },
+    peer: {
+      /// Routing mode: peer_to_peer (simpler than linkstate)
+      mode: "peer_to_peer",
+    },
+    interests: {
+      timeout: 10000,
+    },
+  },
+
+  /// Transport configuration (OPTIMIZED FOR HIGH THROUGHPUT)
+  transport: {
+    /// Unicast transport configuration
+    unicast: {
+      /// Increased timeouts for large number of nodes at startup
+      open_timeout: 60000,
+      accept_timeout: 60000,
+      accept_pending: 10000,
+      max_sessions: 10000,
+      max_links: 1,
+
+      /// Low latency mode: DISABLED (incompatible with QoS)
+      lowlatency: false,
+
+      /// QoS: ENABLED (required for ROS 2)
+      qos: {
+        enabled: true,
+      },
+
+      /// Compression: DISABLED (CPU overhead not worth it for local SHM)
+      compression: {
+        enabled: false,
+      },
     },
 
-    // REST plugin (optional, for monitoring)
-    rest: {
-      http_port: 8001,
+    /// Multicast transport configuration
+    multicast: {
+      join_interval: 2500,
+      max_sessions: 1000,
+      qos: {
+        enabled: false,
+      },
+      compression: {
+        enabled: false,
+      },
+    },
+
+    /// Link configuration
+    link: {
+      /// TX (transmit) configuration
+      tx: {
+        /// Sequence number resolution
+        sequence_number_resolution: "32bit",
+
+        /// Lease duration: 60 seconds (increased for ROS)
+        lease: 60000,
+
+        /// Keep-alive messages: 2 per lease period
+        /// (Fewer needed for loopback communication)
+        keep_alive: 2,
+
+        /// Batch size: 64 KB (maximum)
+        batch_size: 65535,
+
+        /// TX queue configuration
+        queue: {
+          /// Queue sizes for each priority level
+          size: {
+            control: 2,
+            real_time: 2,
+            interactive_high: 2,
+            interactive_low: 2,
+            data_high: 2,
+            data: 2,
+            data_low: 2,
+            background: 2,
+          },
+
+          /// Congestion control
+          congestion_control: {
+            drop: {
+              /// Wait 1ms before dropping droppable messages
+              wait_before_drop: 1000,
+              max_wait_before_drop_fragments: 50000,
+            },
+            block: {
+              /// Wait 60 seconds before closing transport (increased for ROS startup)
+              wait_before_close: 60000000,
+            },
+          },
+
+          /// Batching: ENABLED (adaptive, 1ms time limit)
+          batching: {
+            enabled: true,
+            time_limit: 1,
+          },
+
+          /// Allocation mode: lazy (allocate on demand)
+          allocation: {
+            mode: "lazy",
+          },
+        },
+      },
+
+      /// RX (receive) configuration - INCREASED FOR HIGH THROUGHPUT
+      rx: {
+        /// Receiving buffer: 16 MB (increased from default 64 KB)
+        /// Rationale: Handle burst of multiple large images in flight
+        buffer_size: 16777216,
+
+        /// Maximum defragmentation buffer: 1 GB (default)
+        /// Sufficient for largest test message (4K image ~24 MB)
+        max_message_size: 1073741824,
+      },
+
+      /// TLS configuration (unused, but kept for completeness)
+      tls: {
+        root_ca_certificate: null,
+        listen_private_key: null,
+        listen_certificate: null,
+        enable_mtls: false,
+        connect_private_key: null,
+        connect_certificate: null,
+        verify_name_on_connect: true,
+        close_link_on_expiration: false,
+      },
+    },
+
+    /// ========================================================================
+    /// SHARED MEMORY CONFIGURATION (PRIMARY OPTIMIZATION)
+    /// ========================================================================
+    shared_memory: {
+      /// ENABLED: Use shared memory for zero-copy message passing
+      /// Required on both publisher and subscriber for SHM to activate
+      enabled: true,
+
+      /// Initialization mode: "init" (initialize at session open)
+      /// - "init": SHM initialized immediately (no first-message latency)
+      /// - "lazy": SHM initialized on first use (better startup, slight delay)
+      /// Choice: "init" for consistent benchmark measurements
+      mode: "init",
+
+      /// Transport optimization for large messages
+      transport_optimization: {
+        /// ENABLED: Automatically use SHM for large messages
+        enabled: true,
+
+        /// Pool size: 256 MB
+        ///
+        /// RATIONALE:
+        /// - Test range: 640x480 RGB (900 KB) to 3840x2160 RGB (24 MB)
+        /// - Buffer depth: ~10 frames (history_depth=10 + TX/RX queues)
+        /// - Required: 24 MB × 10 = 240 MB minimum
+        /// - Safety margin: 256 MB (power of 2, ~10-11 4K frames)
+        ///
+        /// COMPARISON:
+        /// - Default Zenoh: 16 MB (insufficient for HD+)
+        /// - CycloneDDS: 1.4 GB (tiered pools, overkill for single stream)
+        /// - This config: 256 MB (balanced for test scenarios)
+        ///
+        /// ALTERNATIVES:
+        /// - 128 MB: Memory constrained, sufficient up to 1080p@60fps
+        /// - 512 MB: Multiple simultaneous high-res streams
+        /// - 1 GB+: Match CycloneDDS-level buffering
+        pool_size: 268435456,
+
+        /// Message size threshold: 1 KB
+        ///
+        /// RATIONALE:
+        /// - Default is 3 KB, but we want to catch more messages
+        /// - All image messages are well above 1 KB (smallest is 900 KB)
+        /// - Lower threshold ensures all sensor data uses SHM
+        /// - Small messages (< 1 KB) use regular transport (minimal overhead)
+        ///
+        /// COMPARISON:
+        /// - Default Zenoh: 3 KB
+        /// - This config: 1 KB (more aggressive SHM usage)
+        /// - CycloneDDS: Variable per pool (1 KB to 25 MB)
+        message_size_threshold: 1024,
+      },
+    },
+
+    /// Authentication (unused)
+    auth: {
+      usrpwd: {
+        user: null,
+        password: null,
+        dictionary_file: null,
+      },
+      pubkey: {
+        public_key_pem: null,
+        private_key_pem: null,
+        public_key_file: null,
+        private_key_file: null,
+        key_size: null,
+        known_keys_file: null,
+      },
+    },
+  },
+
+  /// Admin space configuration
+  adminspace: {
+    enabled: true,
+    permissions: {
+      read: true,
+      write: false,
     },
   },
 }
